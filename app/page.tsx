@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, ListEdit, FileText } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -25,6 +25,102 @@ const NIGHT_TIMES = [
   '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'
 ];
 
+// รายการงานเริ่มต้นของ TN.MC และ Support.TN
+const DEFAULT_MORNING_TN = [
+  'ช่วย ดูแลไลน์ U-coin Rank [Diamond]',
+  'ช่วยรับรายการเวลาไลน์แอดค้าง',
+  'แนะนำแนวทางแก้ไขปัญหาต่างๆให้ MC.',
+  'ตรวจสอบการตอบและทำรายการแก้ไขปัญหาให้ลูกค้า',
+  'ตรวจสอบการตามลูกค้า ชาย / หญิง',
+  'ตรวจสอบและอัปเดตแพทเทิร์นให้เป็นปัจจุบัน และ ตรงตามที่แผนก Quality Assurance กำหนด',
+  'อัปเดตข้อความต้อนรับไลน์แอดให้ดูมีความน่าสนใจ',
+  'เช็คและมอบหมายหน้าที่งานและกระจายงานให้กับ MC',
+  'อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ ให้ทันสมัย',
+  'ติดต่อประสานงานกับส่วนกลางผ่านแอป U-Chat',
+  'อัปเดตเบอร์โทรศัพท์หน้างาน MC',
+  'Ag Balance ( ทุกๆ กะเข้าวันจันทร์ )',
+  'ดูแลอัปเดตหน้า Membe / Pop up เพื่อให้หน้าเว็บดูน่าสนใจ',
+  'มอบหมายหน้าที่งานประจำวันให้กับ MC',
+  'ลงข้อมูล Report Google Group ตามที่ส่วนกลางกำหนด',
+  'คอยอัปเดตรูปที่หน้างานจำเป็นที่ต้องใช้ และ บรีฟงานกับ Graphic เพื่อสั่งรูปใหม่',
+  'ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า',
+  'เช็คสแปมไลน์แอดทั้งหมดที่ MC. ดูแล',
+  'กำหนด Product ในการตามลูกค้าให้ทุกคนในทีม และ เวลาที่เหมาะสม',
+  'อัปเดตกาดร์กีฬารายวัน ,และ โปรโมชั่นต่างๆ',
+  'เช็ค OTP หน้าเว็บ',
+  'ตรวจสอบการ CR ลูกค้าต่างๆ และการเปลี่ยนหัวให้เป็นไปตามนโยบายบริษัท',
+  'เช็คไอพีสำหรับยูสเซอร์ New Member',
+  'สรุปตาราง Dropbox Report',
+  'ช่วยรับรายการเวลาไลน์แอดค้าง',
+  'เเจ้ง TALK TALK\n @345 Customer Care / @MC345 SERVICEZ 345 / @ing345 ING345 / @วาร์ป'
+];
+
+const DEFAULT_MORNING_SUPPORT = [
+  'รีพาส /อัปเดตลบ+เพิ่ม ข้อมูล',
+  'Support TN.MC สรุปตาราง Dropbox Report',
+  'เช็คสแปมไลน์แอดทั้งหมดที่ MC. ดูแล',
+  'QA ตารางแนะนำเพื่อน',
+  'เช็คกิจกรรมและโปรโมชั่นต่างๆ ที่มี พร้อมนำเสนอลูกค้า',
+  'ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า',
+  'อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ให้ทันสมัย และน่าสนใจ',
+  'ดูและ Popup - Member ให้เป็นไปตามแพลนงานของบริษัท และได้รับการอนุมัติจาก TN.',
+  'สนับสนุนงาน TN.MC ในทุกภารกิจที่ได้รับมอบหมาย ให้เป็นไปตามนโยบายของบริษัทและ South Group',
+  'ดูแลรายการสมัครหน้าเว็บและดีด',
+  'ตามลูกค้าไลน์หลักเมื่อวาน / ปัจจุบัน / ทีมตามMC (ชาย/หญิง)',
+  'เก็บตกหล่น',
+  'มอบหมายเปลี่ยนหัว CR ให้พนักงาน',
+  'ดูแลและบริการการแก้ไขปัญหา แนะนำกิจกรรมให้ลูกค้า',
+  'เปลี่ยนริชเมนูที่ไลน์ MC และ CALL ตอนเที่ยงคืน',
+  '@UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป'
+];
+
+const DEFAULT_NIGHT_TN = [
+  'ช่วย ดูแลไลน์ U-coin Rank [Diamond]',
+  'ช่วยรับรายการเวลาไลน์แอดค้าง',
+  'แนะนำแนวทางแก้ไขปัญหาต่างๆให้ MC.',
+  'ตรวจสอบการตอบและทำรายการแก้ไขปัญหาให้ลูกค้า',
+  'ตรวจสอบการตามลูกค้า ชาย / หญิง',
+  'ตรวจสอบและอัปเดตแพทเทิร์นให้เป็นปัจจุบัน และ ตรงตามที่แผนก Quality Assurance กำหนด',
+  'อัปเดตข้อความต้อนรับไลน์แอดให้ดูมีความน่าสนใจ',
+  'เช็คและมอบหมายหน้าที่งานและกระจายงานให้กับ MC',
+  'อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ ให้ทันสมัย',
+  'ติดต่อประสานงานกับส่วนกลางผ่านแอป U-Chat',
+  'อัปเดตเบอร์โทรศัพท์หน้างาน MC',
+  'ดูแลอัปเดตหน้า Membe / Pop up เพื่อให้หน้าเว็บดูน่าสนใจ',
+  'มอบหมายหน้าที่งานประจำวันให้กับ MC',
+  'ลงข้อมูล Report Google Group ตามที่ส่วนกลางกำหนด',
+  'คอยอัปเดตรูปที่หน้างานจำเป็นที่ต้องใช้ และ บรีฟงานกับ Graphic เพื่อสั่งรูปใหม่',
+  'ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า',
+  'เช็คสแปมไลน์แอดทั้งหมดที่ MC. ดูแล',
+  'กำหนด Product ในการตามลูกค้าให้ทุกคนในทีม และ เวลาที่เหมาะสม',
+  'อัปเดตกาดร์กีฬารายวัน ,และ โปรโมชั่นต่างๆ',
+  'เช็ค OTP หน้าเว็บ',
+  'ตรวจสอบการ CR ลูกค้าต่างๆ และการเปลี่ยนหัวให้เป็นไปตามนโยบายบริษัท',
+  'เช็คไอพีสำหรับยูสเซอร์ New Member',
+  'สรุปตาราง Dropbox Report',
+  'ช่วยรับรายการเวลาไลน์แอดค้าง',
+  'เเจ้ง TALK TALK\n @345 Customer Care / @MC345 SERVICEZ 345 / @ing345 ING345 / @วาร์ป'
+];
+
+const DEFAULT_NIGHT_SUPPORT = [
+  'รีพาส /อัปเดตลบ+เพิ่ม ข้อมูล',
+  'Support TN.MC สรุปตาราง Dropbox Report',
+  'เช็คสแปมไลน์แอดทั้งหมดที่ MC. ดูแล',
+  'QA ตารางแนะนำเพื่อน',
+  'เช็คกิจกรรมและโปรโมชั่นต่างๆ ที่มี พร้อมนำเสนอลูกค้า',
+  'ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า',
+  'อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ให้ทันสมัย และน่าสนใจ',
+  'ดูและ Popup - Member ให้เป็นไปตามแพลนงานของบริษัท และได้รับการอนุมัติจาก TN.',
+  'สนับสนุนงาน TN.MC ในทุกภารกิจที่ได้รับมอบหมาย ให้เป็นไปตามนโยบายของบริษัทและ South Group',
+  'ดูแลรายการสมัครหน้าเว็บและดีด',
+  'เก็บตกหล่น',
+  'มอบหมายเปลี่ยนหัว CR ให้พนักงาน',
+  'ดูแลและบริการการแก้ไขปัญหา แนะนำกิจกรรมให้ลูกค้า',
+  'เปลี่ยนริชเมนูที่ไลน์ MC และ CALL ตอนเที่ยงคืน',
+  'สรุปตาราง Dropbox Report',
+  '@UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป'
+];
+
 export default function Home() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShift, setSelectedShift] = useState<'morning' | 'night'>('morning');
@@ -35,9 +131,20 @@ export default function Home() {
   const [rotating, setRotating] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
 
-  const [tnMcName, setTnMcName] = useState('เอก[Z3]');
+  const [tnMcName, setTnMcName] = useState('เอก [Z3]');
   const [supportTnName, setSupportTnName] = useState('พี่เอ้ [SL]');
   const [isEditingLeaders, setIsEditingLeaders] = useState(false);
+
+  // สเตทสำหรับเก็บรายการงานประจำของหัวหน้ากะ
+  const [morningTnTasks, setMorningTnTasks] = useState<string[]>(DEFAULT_MORNING_TN);
+  const [morningSupportTasks, setMorningSupportTasks] = useState<string[]>(DEFAULT_MORNING_SUPPORT);
+  const [nightTnTasks, setNightTnTasks] = useState<string[]>(DEFAULT_NIGHT_TN);
+  const [nightSupportTasks, setNightSupportTasks] = useState<string[]>(DEFAULT_NIGHT_SUPPORT);
+
+  // สเตทเปิด/ปิด Pop-up แก้ไขรายละเอียดงานหัวหน้า
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<'tn' | 'support'>('tn');
+  const [tempTasksInput, setTempTasksInput] = useState<string>('');
 
   // คำนวณจำนวนงานที่เสร็จและเปอร์เซ็นต์
   const completedTasksCount = tasks.filter(t => t.is_completed).length;
@@ -311,58 +418,58 @@ export default function Home() {
     }
   };
 
+  // เปิด Modal แก้ไขรายละเอียดงานหัวหน้า
+  const openLeaderTasksModal = (target: 'tn' | 'support') => {
+    setEditingTarget(target);
+    let targetTasks: string[] = [];
+    if (selectedShift === 'morning') {
+      targetTasks = target === 'tn' ? morningTnTasks : morningSupportTasks;
+    } else {
+      targetTasks = target === 'tn' ? nightTnTasks : nightSupportTasks;
+    }
+    setTempTasksInput(targetTasks.join('\n'));
+    setShowTaskDetailModal(true);
+  };
+
+  // บันทึกรายการงานหัวหน้า
+  const saveLeaderTasks = () => {
+    const updatedArray = tempTasksInput
+      .split('\n')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+
+    if (selectedShift === 'morning') {
+      if (editingTarget === 'tn') setMorningTnTasks(updatedArray);
+      else setMorningSupportTasks(updatedArray);
+    } else {
+      if (editingTarget === 'tn') setNightTnTasks(updatedArray);
+      else setNightSupportTasks(updatedArray);
+    }
+
+    setShowTaskDetailModal(false);
+  };
+
   const handleCopyReport = () => {
     const formattedDate = selectedDate.split('-').reverse().join(' / ');
     const shiftTitle = selectedShift === 'morning' ? 'MC  กะเช้า' : 'MC ดึก';
 
     let reportText = `หน้าที่ประจำวันที่ ${formattedDate}\n\n${shiftTitle}\n\n`;
 
-    reportText += `TN.MC : ${tnMcName}
-- ช่วย ดูแลไลน์ U-coin Rank [Diamond]
-- ช่วยรับรายการเวลาไลน์แอดค้าง
-- แนะนำแนวทางแก้ไขปัญหาต่างๆให้ MC. 
-- ตรวจสอบการตอบและทำรายการแก้ไขปัญหาให้ลูกค้า
-- ตรวจสอบการตามลูกค้า ชาย / หญิง
-- ตรวจสอบและอัปเดตแพทเทิร์นให้เป็นปัจจุบัน และ ตรงตามที่แผนก Quality Assurance กำหนด
-- อัปเดตข้อความต้อนรับไลน์แอดให้ดูมีความน่าสนใจ
-- เช็คและมอบหมายหน้าที่งานและกระจายงานให้กับ MC
-- อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ ให้ทันสมัย
-- ติดต่อประสานงานกับส่วนกลางผ่านแอป U-Chat
-- อัปเดตเบอร์โทรศัพท์หน้างาน MC
-${selectedShift === 'morning' ? '- Ag Balance ( ทุกๆ กะเข้าวันจันทร์ )\n' : ''}- ดูแลอัปเดตหน้า Membe / Pop up เพื่อให้หน้าเว็บดูน่าสนใจ  
-- มอบหมายหน้าที่งานประจำวันให้กับ MC
-- ลงข้อมูล Report Google Group ตามที่ส่วนกลางกำหนด
-- คอยอัปเดตรูปที่หน้างานจำเป็นที่ต้องใช้ และ บรีฟงานกับ Graphic เพื่อสั่งรูปใหม่
-- ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า
-- เช็คสแปมไลน์แอดทั้งหมดที่ MC. ดูแล
-- กำหนด Product ในการตามลูกค้าให้ทุกคนในทีม และ เวลาที่เหมาะสม
-- อัปเดตกาดร์กีฬารายวัน ,และ โปรโมชั่นต่างๆ 
-- เช็ค OTP หน้าเว็บ
-- ตรวจสอบการ CR ลูกค้าต่างๆ และการเปลี่ยนหัวให้เป็นไปตามนโยบายบริษัท
-- เช็คไอพีสำหรับยูสเซอร์ New Member
-- สรุปตาราง Dropbox Report 
-- ช่วยรับรายการเวลาไลน์แอดค้าง
-- เเจ้ง TALK TALK
- @345 Customer Care / @MC345 SERVICEZ 345 / @ing345 ING345 / @วาร์ป
+    // ดึงงานตามสเตทปัจจุบัน
+    const currentTnTasks = selectedShift === 'morning' ? morningTnTasks : nightTnTasks;
+    const currentSupportTasks = selectedShift === 'morning' ? morningSupportTasks : nightSupportTasks;
 
-Support.TN ${supportTnName}
-- รีพาส /อัปเดตลบ+เพิ่ม ข้อมูล
-- Support TN.MC สรุปตาราง Dropbox Report 
-- เช็คสแปมไลน์แอดทั้งหมดที่ MC. ดูแล 
-- QA ตารางแนะนำเพื่อน
-- เช็คกิจกรรมและโปรโมชั่นต่างๆ ที่มี พร้อมนำเสนอลูกค้า
-- ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า
-- อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ให้ทันสมัย และน่าสนใจ
-- ดูและ Popup - Member ให้เป็นไปตามแพลนงานของบริษัท และได้รับการอนุมัติจาก TN.
-- สนับสนุนงาน TN.MC ในทุกภารกิจที่ได้รับมอบหมาย ให้เป็นไปตามนโยบายของบริษัทและ South Group
-- ดูแลรายการสมัครหน้าเว็บและดีด
-${selectedShift === 'morning' ? '- ตามลูกค้าไลน์หลักเมื่อวาน / ปัจจุบัน / ทีมตามMC (ชาย/หญิง)\n' : ''}- เก็บตกหล่น
--  มอบหมายเปลี่ยนหัว CR ให้พนักงาน
-- ดูแลและบริการการแก้ไขปัญหา แนะนำกิจกรรมให้ลูกค้า
-- เปลี่ยนริชเมนูที่ไลน์ MC และ CALL ตอนเที่ยงคืน
-${selectedShift === 'night' ? '- สรุปตาราง Dropbox Report \n' : ''}- @UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป\n\n`;
+    reportText += `TN.MC : ${tnMcName}\n`;
+    currentTnTasks.forEach(task => {
+      reportText += `- ${task}\n`;
+    });
 
-    reportText += `📍 หลักการตามลูกค้า 🚩 แยกชาย-หญิง และหากมีโน๊ต ประเภทที่ลค.สนใจ\nING, ไลน์หลัก   =  วันนี้ + เมื่อวาน และ แท็กทีมตามMC   \n------------------------------------\n\n🚩หน้าที่หลักของ พนง. MC ที่ต้องช่วยกัน !!\n\n- 5 LINE@ หลักที่ต้องดูแลช่วยกัน [345สมัคร, ไลน์หลัก, ING, SERVICE และ ทำไมไม่วาร์ป]\n-  ตามแจ้งเคสถอนใน Talk Talk 📌\n-  รับ+ดีด รายการหน้าเว็บ\n-  เก็บตกหล่น\n\nนอกเหนือจากนี้ มีการแบ่งหน้าที่ให้ชัดเจนแล้ว ตามนี้ค่ะ\n\n`;
+    reportText += `\nSupport.TN ${supportTnName}\n`;
+    currentSupportTasks.forEach(task => {
+      reportText += `- ${task}\n`;
+    });
+
+    reportText += `\n📍 หลักการตามลูกค้า 🚩 แยกชาย-หญิง และหากมีโน๊ต ประเภทที่ลค.สนใจ\nING, ไลน์หลัก   =  วันนี้ + เมื่อวาน และ แท็กทีมตามMC   \n------------------------------------\n\n🚩หน้าที่หลักของ พนง. MC ที่ต้องช่วยกัน !!\n\n- 5 LINE@ หลักที่ต้องดูแลช่วยกัน [345สมัคร, ไลน์หลัก, ING, SERVICE และ ทำไมไม่วาร์ป]\n-  ตามแจ้งเคสถอนใน Talk Talk 📌\n-  รับ+ดีด รายการหน้าเว็บ\n-  เก็บตกหล่น\n\nนอกเหนือจากนี้ มีการแบ่งหน้าที่ให้ชัดเจนแล้ว ตามนี้ค่ะ\n\n`;
 
     tasks.forEach(task => {
       reportText += `- ${task.role} : ${task.staff_name}\n`;
@@ -451,7 +558,7 @@ ${selectedShift === 'night' ? '- สรุปตาราง Dropbox Report \n' 
 
         {/* Section ทีมบริหาร */}
         <section className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-5 space-y-4 shadow-xl">
-          <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
+          <div className="flex flex-wrap justify-between items-center border-b border-slate-800/80 pb-3 gap-2">
             <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2 tracking-wide">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               ทีมบริหารประจำกะ <span className="text-xs font-normal text-slate-400">({selectedShift === 'morning' ? 'กะเช้า' : 'กะดึก'})</span>
@@ -473,15 +580,25 @@ ${selectedShift === 'night' ? '- สรุปตาราง Dropbox Report \n' 
               ) : (
                 <>
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>แก้ไขหัวหน้ากะ</span>
+                  <span>แก้ไขชื่อหัวหน้ากะ</span>
                 </>
               )}
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 space-y-1">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">TN.MC</span>
+            {/* TN.MC Box */}
+            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">TN.MC</span>
+                <button
+                  onClick={() => openLeaderTasksModal('tn')}
+                  className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 transition-all"
+                >
+                  <ListEdit className="w-3 h-3" /> แก้ไขงานประจำ
+                </button>
+              </div>
+
               {isEditingLeaders ? (
                 <input
                   type="text"
@@ -492,10 +609,27 @@ ${selectedShift === 'night' ? '- สรุปตาราง Dropbox Report \n' 
               ) : (
                 <p className="text-base font-bold text-amber-400">{tnMcName}</p>
               )}
+
+              {/* แสดงตัวอย่างงาน TN.MC */}
+              <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg max-h-24 overflow-y-auto space-y-1 scrollbar-thin">
+                {(selectedShift === 'morning' ? morningTnTasks : nightTnTasks).map((task, idx) => (
+                  <p key={idx} className="truncate">• {task}</p>
+                ))}
+              </div>
             </div>
 
-            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 space-y-1">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Support.TN</span>
+            {/* Support.TN Box */}
+            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Support.TN</span>
+                <button
+                  onClick={() => openLeaderTasksModal('support')}
+                  className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20 transition-all"
+                >
+                  <ListEdit className="w-3 h-3" /> แก้ไขงานประจำ
+                </button>
+              </div>
+
               {isEditingLeaders ? (
                 <input
                   type="text"
@@ -506,9 +640,64 @@ ${selectedShift === 'night' ? '- สรุปตาราง Dropbox Report \n' 
               ) : (
                 <p className="text-base font-bold text-sky-400">{supportTnName}</p>
               )}
+
+              {/* แสดงตัวอย่างงาน Support.TN */}
+              <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg max-h-24 overflow-y-auto space-y-1 scrollbar-thin">
+                {(selectedShift === 'morning' ? morningSupportTasks : nightSupportTasks).map((task, idx) => (
+                  <p key={idx} className="truncate">• {task}</p>
+                ))}
+              </div>
             </div>
           </div>
         </section>
+
+        {/* Modal สำหรับแก้ไขรายละเอียดงานหัวหน้า */}
+        {showTaskDetailModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-amber-400" />
+                  จัดการงานประจำของ {editingTarget === 'tn' ? 'TN.MC' : 'Support.TN'} ({selectedShift === 'morning' ? 'กะเช้า' : 'กะดึก'})
+                </h3>
+                <button 
+                  onClick={() => setShowTaskDetailModal(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-slate-400 font-medium">
+                  แก้ไขข้อความบทบาทงานประจำ (1 บรรทัด = 1 หัวข้อ/รายการ):
+                </label>
+                <textarea
+                  value={tempTasksInput}
+                  onChange={(e) => setTempTasksInput(e.target.value)}
+                  rows={12}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 font-mono outline-none focus:border-amber-500 leading-relaxed scrollbar-thin"
+                  placeholder="พิมพ์รายการงานที่นี่..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  onClick={() => setShowTaskDetailModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 font-semibold"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={saveLeaderTasks}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-950 font-bold bg-amber-500 hover:bg-amber-400 flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
+                >
+                  <Save className="w-3.5 h-3.5" /> บันทึกการเปลี่ยนแปลง
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Task List Section */}
         <section className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-5 sm:p-6 space-y-5 shadow-xl">
