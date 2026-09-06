@@ -14,8 +14,8 @@ interface Task {
   time: string;
   additional_times?: string[];
   time_details?: Record<string, string>;
-  special_task?: string; // เก็บงานพิเศษ เช่น "โทรหน้าเว็บ"
-  lost_and_found?: string; // เก็บข้อความเก็บตกหล่น เช่น "เก็บตกหล่นไลน์หลัก"
+  special_task?: string;
+  lost_and_found?: string;
   staff_name: string;
   role: string;
   action_detail: string;
@@ -34,10 +34,8 @@ const NIGHT_TIMES = [
   '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'
 ];
 
-// รายการงานพิเศษยอดนิยม Quick Select
 const SUGGESTED_SPECIAL_TASKS = ['โทรหน้าเว็บ', 'ดูแล LINE Official', 'ดูแลเคสฝาก-ถอน'];
 
-// รายการงานเริ่มต้นของ TN.MC และ Support.TN
 const DEFAULT_MORNING_TN = [
   'ช่วย ดูแลไลน์ U-coin Rank [Diamond]',
   'ช่วยรับรายการเวลาไลน์แอดค้าง',
@@ -168,6 +166,7 @@ export default function Home() {
   const [tnMcName, setTnMcName] = useState('เอก [Z3]');
   const [supportTnName, setSupportTnName] = useState('พี่เอ้ [SL]');
   const [isEditingLeaders, setIsEditingLeaders] = useState(false);
+  const [savingLeaders, setSavingLeaders] = useState(false);
 
   const [morningTnTasks, setMorningTnTasks] = useState<string[]>(DEFAULT_MORNING_TN);
   const [morningSupportTasks, setMorningSupportTasks] = useState<string[]>(DEFAULT_MORNING_SUPPORT);
@@ -211,17 +210,66 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // โหลดข้อมูลชื่อหัวหน้ากะจาก Supabase หรือ LocalStorage
   useEffect(() => {
-    if (selectedShift === 'morning') {
-      setTnMcName('เอก [Z3]');
-      setSupportTnName('พี่เอ้ [SL]');
-    } else {
-      setTnMcName('ท็อป [Z3]');
-      setSupportTnName('กีกี้ [SL]');
-    }
+    fetchLeaders();
   }, [selectedShift]);
 
-  // สเตทเพิ่มงานแบบจับคู่ [เวลา, รายละเอียดงาน], งานพิเศษ และ เก็บตกหล่น
+  const fetchLeaders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shift_leaders')
+        .select('*')
+        .eq('shift', selectedShift)
+        .single();
+
+      if (data && !error) {
+        setTnMcName(data.tn_mc_name);
+        setSupportTnName(data.support_tn_name);
+      } else {
+        // แผนสำรอง: ดึงจาก LocalStorage หากไม่มีใน DB
+        const savedTn = localStorage.getItem(`tn_mc_${selectedShift}`);
+        const savedSupport = localStorage.getItem(`support_tn_${selectedShift}`);
+
+        const defaultTn = selectedShift === 'morning' ? 'เอก [Z3]' : 'ท็อป [Z3]';
+        const defaultSupport = selectedShift === 'morning' ? 'พี่เอ้ [SL]' : 'กีกี้ [SL]';
+
+        setTnMcName(savedTn || defaultTn);
+        setSupportTnName(savedSupport || defaultSupport);
+      }
+    } catch {
+      const defaultTn = selectedShift === 'morning' ? 'เอก [Z3]' : 'ท็อป [Z3]';
+      const defaultSupport = selectedShift === 'morning' ? 'พี่เอ้ [SL]' : 'กีกี้ [SL]';
+      setTnMcName(defaultTn);
+      setSupportTnName(defaultSupport);
+    }
+  };
+
+  const handleSaveLeaders = async () => {
+    setSavingLeaders(true);
+
+    // บันทึกลง LocalStorage กันหลุด
+    localStorage.setItem(`tn_mc_${selectedShift}`, tnMcName);
+    localStorage.setItem(`support_tn_${selectedShift}`, supportTnName);
+
+    // บันทึกลง Supabase
+    const { error } = await supabase
+      .from('shift_leaders')
+      .upsert({
+        shift: selectedShift,
+        tn_mc_name: tnMcName,
+        support_tn_name: supportTnName,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'shift' });
+
+    if (error) {
+      console.warn('Supabase shift_leaders save warning:', error.message);
+    }
+
+    setSavingLeaders(false);
+    setIsEditingLeaders(false);
+  };
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTimePairs, setNewTimePairs] = useState<TimeTaskPair[]>([{ time: '', detail: '' }]);
   const [newStaffName, setNewStaffName] = useState('');
@@ -230,7 +278,6 @@ export default function Home() {
   const [newSpecialTask, setNewSpecialTask] = useState('');
   const [newLostAndFound, setNewLostAndFound] = useState('เก็บตกหล่น');
 
-  // สเตทแก้ไขงาน
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTimePairs, setEditTimePairs] = useState<TimeTaskPair[]>([]);
   const [editStaffName, setEditStaffName] = useState('');
@@ -294,7 +341,6 @@ export default function Home() {
     return taken;
   };
 
-  // สลับเวรเฉพาะเวลาและหน้าที่ตามลูกค้า แต่รักษางานพิเศษและเก็บตกหล่นให้อยู่กับตัวพนักงานเดิม
   const handleRotateTasks = async () => {
     if (tasks.length < 2) {
       alert('ต้องมีรายการงานอย่างน้อย 2 รายการขึ้นไปจึงจะหมุนเวียนเวรได้ครับ');
@@ -613,7 +659,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans selection:bg-sky-500 selection:text-white">
-      {/* กำหนดชื่อบน Browser Tab */}
       <title>ระบบจัดการหน้างาน MC345</title>
 
       <div className="max-w-4xl mx-auto space-y-6">
@@ -662,7 +707,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* แถบเลือกวันที่ย้อนหลัง ( Quick Tabs 7 วัน ) */}
           <div className="pt-2 border-t border-slate-800/80 relative z-10 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
@@ -731,26 +775,24 @@ export default function Home() {
               ทีมบริหารประจำกะ <span className="text-xs font-normal text-slate-400">({selectedShift === 'morning' ? 'กะเช้า' : 'กะดึก'})</span>
             </h2>
             
-            <button
-              onClick={() => setIsEditingLeaders(!isEditingLeaders)}
-              className={`text-xs font-semibold flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
-                isEditingLeaders
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md'
-                  : 'text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20'
-              }`}
-            >
-              {isEditingLeaders ? (
-                <>
-                  <Save className="w-3.5 h-3.5" />
-                  <span>บันทึกชื่อ</span>
-                </>
-              ) : (
-                <>
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>แก้ไขชื่อหัวหน้ากะ</span>
-                </>
-              )}
-            </button>
+            {isEditingLeaders ? (
+              <button
+                onClick={handleSaveLeaders}
+                disabled={savingLeaders}
+                className="text-xs font-semibold flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all bg-emerald-600 hover:bg-emerald-500 text-white shadow-md disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{savingLeaders ? 'กำลังบันทึก...' : 'บันทึกชื่อ'}</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditingLeaders(true)}
+                className="text-xs font-semibold flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>แก้ไขชื่อหัวหน้ากะ</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -983,7 +1025,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* ส่วนกรอกงานพิเศษ / หน้าที่พิเศษ + ข้อความเก็บตกหล่น */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
@@ -997,7 +1038,6 @@ export default function Home() {
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-purple-300 outline-none focus:border-purple-500"
                   />
                   
-                  {/* ปุ่ม Quick Select งานพิเศษ */}
                   <div className="flex flex-wrap gap-1 items-center pt-0.5">
                     {SUGGESTED_SPECIAL_TASKS.map((st) => (
                       <button
@@ -1027,7 +1067,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* ส่วนเพิ่มเวลา + รายละเอียดงานแต่ละช่วงเวลา */}
               <div className="space-y-3 pt-2 border-t border-slate-800">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-sky-400">เวลาตามลูกค้า และ รายละเอียดงานประจำช่วงเวลา (สูงสุด 3 เวลา):</label>
@@ -1131,7 +1170,6 @@ export default function Home() {
                   }`}
                 >
                   {editingId === task.id ? (
-                    /* โหมดแก้ไขรายการงาน */
                     <div className="flex-1 w-full space-y-3 bg-slate-950 p-3.5 rounded-xl border border-sky-500/30">
                       <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-800">
                         <select
@@ -1166,7 +1204,6 @@ export default function Home() {
                         </button>
                       </div>
 
-                      {/* แก้ไขงานพิเศษ + เก็บตกหล่น */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <label className="text-[11px] font-bold text-purple-400">งานพิเศษ / หน้าที่พิเศษ:</label>
@@ -1191,7 +1228,6 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* รายการเวลา + รายละเอียดในโหมดแก้ไข */}
                       <div className="space-y-2 pt-2 border-t border-slate-800">
                         <div className="flex justify-between items-center">
                           <span className="text-[11px] font-bold text-sky-400">แก้ไขเวลาและรายละเอียดงาน:</span>
@@ -1268,7 +1304,6 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    /* โหมดแสดงผลปกติ */
                     <>
                       <div className="flex items-start gap-3.5 cursor-pointer flex-1" onClick={() => toggleTaskStatus(task.id, task.is_completed)}>
                         <button className="transition-transform active:scale-95 mt-1">
@@ -1280,7 +1315,6 @@ export default function Home() {
                         </button>
 
                         <div className="space-y-2 flex-1">
-                          {/* แสดงงานพิเศษถ้ามี */}
                           {task.special_task && (
                             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-950/80 text-purple-300 border border-purple-800/80 text-xs font-bold">
                               <PhoneCall className="w-3 h-3" />
@@ -1288,7 +1322,6 @@ export default function Home() {
                             </div>
                           )}
 
-                          {/* แสดงรายการเวลา + รายละเอียดงานแต่ละช่วง */}
                           {[task.time, ...(task.additional_times || [])].map((t, idx) => {
                             const detail = task.time_details?.[t] || (t === task.time ? task.action_detail : '');
                             return (
@@ -1303,7 +1336,6 @@ export default function Home() {
                             );
                           })}
 
-                          {/* แสดงข้อความเก็บตกหล่นประจำตัว */}
                           <div className="pt-0.5">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-950/60 text-amber-400 border border-amber-800/60 text-[11px] font-semibold">
                               <Wrench className="w-3 h-3 text-amber-400" />
