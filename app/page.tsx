@@ -139,22 +139,8 @@ const getMinDateString = () => {
   return d.toISOString().split('T')[0];
 };
 
-const getRecent7Days = () => {
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push({
-      dateStr: d.toISOString().split('T')[0],
-      displayDate: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
-      label: i === 0 ? 'วันนี้' : i === 1 ? 'เมื่อวาน' : `${i} วันที่แล้ว`
-    });
-  }
-  return days;
-};
-
 export default function Home() {
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [selectedShift, setSelectedShift] = useState<'morning' | 'night'>('morning');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,28 +170,21 @@ export default function Home() {
 
   const todayStr = getTodayString();
   const minDateStr = getMinDateString();
-  const recentDays = getRecent7Days();
 
   useEffect(() => {
-    const updateRealtimeDateAndShift = () => {
-      const now = new Date();
-      const currentDateString = now.toISOString().split('T')[0];
+    const now = new Date();
+    setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
 
-      setSelectedDate(currentDateString);
-      setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+    const currentHour = now.getHours();
+    if (currentHour >= 7 && currentHour < 19) {
+      setSelectedShift('morning');
+    } else {
+      setSelectedShift('night');
+    }
 
-      const currentHour = now.getHours();
-      if (currentHour >= 7 && currentHour < 19) {
-        setSelectedShift('morning');
-      } else {
-        setSelectedShift('night');
-      }
-    };
-
-    updateRealtimeDateAndShift();
     const interval = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+      const d = new Date();
+      setCurrentTime(d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
     }, 10000);
 
     return () => clearInterval(interval);
@@ -741,43 +720,10 @@ export default function Home() {
             </div>
           </div>
 
-          {/* แถบเลือกวันที่ย้อนหลัง ( Quick Tabs 7 วัน ) */}
-          <div className="pt-4 border-t border-slate-800/80 relative z-10 space-y-2.5">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-400">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-300">
-                <Calendar className="w-4 h-4 text-sky-400" />
-                เลือกดูข้อมูลย้อนหลัง (สูงสุด 7 วัน):
-              </span>
-              <span className="font-mono text-[11px] text-slate-500">
-                ช่วงวันที่: {minDateStr.split('-').reverse().join('/')} ถึง {todayStr.split('-').reverse().join('/')}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-              {recentDays.map((day) => {
-                const isActive = selectedDate === day.dateStr;
-                return (
-                  <button
-                    key={day.dateStr}
-                    onClick={() => setSelectedDate(day.dateStr)}
-                    className={`py-2 px-2.5 rounded-xl text-center transition-all border flex flex-col items-center justify-center ${
-                      isActive
-                        ? 'bg-sky-500/20 border-sky-500/60 text-sky-300 font-bold shadow-md shadow-sky-500/10 scale-[1.02]'
-                        : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium opacity-75">{day.label}</span>
-                    <span className="text-xs font-mono font-bold mt-0.5">{day.displayDate}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800/80 relative z-10">
             <div className="flex items-center gap-2.5 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 focus-within:border-sky-500/50 transition-all">
               <Calendar className="w-4 h-4 text-sky-400" />
-              <span className="text-xs text-slate-400 font-medium">ระบุวันที่เอง:</span>
+              <span className="text-xs text-slate-400 font-medium">วันที่แสดงผล:</span>
               <input
                 type="date"
                 min={minDateStr}
@@ -786,6 +732,14 @@ export default function Home() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="bg-transparent text-sm font-semibold text-slate-200 outline-none cursor-pointer"
               />
+              {selectedDate !== todayStr && (
+                <button
+                  onClick={() => setSelectedDate(todayStr)}
+                  className="ml-2 text-[10px] bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 px-2.5 py-1 rounded-lg border border-sky-500/30 transition-all font-semibold"
+                >
+                  กลับสู่วันนี้
+                </button>
+              )}
             </div>
 
             <button
@@ -948,7 +902,7 @@ export default function Home() {
             <div>
               <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
                 <Clock className="w-5 h-5 text-sky-400" /> 
-                ตารางมอบหมายงานประจำวัน
+                ตารางมอบหมายงานประจำวัน ({selectedDate.split('-').reverse().join('/')})
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">จัดการเวลา รายละเอียด และสถานะงานของทีมงานในกะนี้</p>
             </div>
