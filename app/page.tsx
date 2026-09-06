@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText, PhoneCall } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText, PhoneCall, Wrench } from 'lucide-react';
 
 interface TimeTaskPair {
   time: string;
@@ -15,6 +15,7 @@ interface Task {
   additional_times?: string[];
   time_details?: Record<string, string>;
   special_task?: string; // เก็บงานพิเศษ เช่น "โทรหน้าเว็บ"
+  lost_and_found?: string; // เก็บข้อความเก็บตกหล่น เช่น "เก็บตกหล่นไลน์หลัก"
   staff_name: string;
   role: string;
   action_detail: string;
@@ -220,13 +221,14 @@ export default function Home() {
     }
   }, [selectedShift]);
 
-  // สเตทเพิ่มงานแบบจับคู่ [เวลา, รายละเอียดงาน] และงานพิเศษ
+  // สเตทเพิ่มงานแบบจับคู่ [เวลา, รายละเอียดงาน], งานพิเศษ และ เก็บตกหล่น
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTimePairs, setNewTimePairs] = useState<TimeTaskPair[]>([{ time: '', detail: '' }]);
   const [newStaffName, setNewStaffName] = useState('');
   const [newRole, setNewRole] = useState('MC');
   const [isOt, setIsOt] = useState(false);
   const [newSpecialTask, setNewSpecialTask] = useState('');
+  const [newLostAndFound, setNewLostAndFound] = useState('เก็บตกหล่น');
 
   // สเตทแก้ไขงาน
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -235,6 +237,7 @@ export default function Home() {
   const [editRole, setEditRole] = useState('MC');
   const [editIsOt, setEditIsOt] = useState(false);
   const [editSpecialTask, setEditSpecialTask] = useState('');
+  const [editLostAndFound, setEditLostAndFound] = useState('เก็บตกหล่น');
 
   const shiftTimes = selectedShift === 'morning' ? MORNING_TIMES : NIGHT_TIMES;
 
@@ -291,7 +294,7 @@ export default function Home() {
     return taken;
   };
 
-  // สลับเวรเฉพาะเวลาและหน้าที่ตามลูกค้า แต่รักษางานพิเศษให้อยู่กับตัวพนักงานเดิม
+  // สลับเวรเฉพาะเวลาและหน้าที่ตามลูกค้า แต่รักษางานพิเศษและเก็บตกหล่นให้อยู่กับตัวพนักงานเดิม
   const handleRotateTasks = async () => {
     if (tasks.length < 2) {
       alert('ต้องมีรายการงานอย่างน้อย 2 รายการขึ้นไปจึงจะหมุนเวียนเวรได้ครับ');
@@ -304,7 +307,6 @@ export default function Home() {
 
     setRotating(true);
 
-    // ดึงเฉพาะชุดงานตามลูกค้า (เวลา + รายละเอียดงาน)
     const taskDetailsList = tasks.map(t => ({
       time: t.time,
       additional_times: t.additional_times,
@@ -312,13 +314,11 @@ export default function Home() {
       action_detail: t.action_detail
     }));
 
-    // หมุนวนเฉพาะชุดเวลางานตามลูกค้า
     const rotatedTaskDetailsList = [
       taskDetailsList[taskDetailsList.length - 1],
       ...taskDetailsList.slice(0, taskDetailsList.length - 1)
     ];
 
-    // อัปเดตตารางโดยคง staff_name, role และ special_task ไว้ที่เดิม
     const updatePromises = tasks.map((task, index) => {
       const newDetails = rotatedTaskDetailsList[index];
       return supabase
@@ -365,6 +365,7 @@ export default function Home() {
       additional_times: t.additional_times || [],
       time_details: t.time_details || {},
       special_task: t.special_task || '',
+      lost_and_found: t.lost_and_found || 'เก็บตกหล่น',
       staff_name: t.staff_name,
       role: t.role,
       action_detail: t.action_detail,
@@ -429,6 +430,7 @@ export default function Home() {
       additional_times: additionalTimes,
       time_details: timeDetailsObj,
       special_task: newSpecialTask.trim(),
+      lost_and_found: newLostAndFound.trim() || 'เก็บตกหล่น',
       staff_name: finalStaffName,
       role: newRole,
       action_detail: primaryDetail,
@@ -446,6 +448,7 @@ export default function Home() {
       setTasks([...tasks, data[0]].sort((a, b) => a.time.localeCompare(b.time)));
       setNewStaffName('');
       setNewSpecialTask('');
+      setNewLostAndFound('เก็บตกหล่น');
       setIsOt(false);
       setShowAddForm(false);
     }
@@ -479,6 +482,7 @@ export default function Home() {
     setEditIsOt(hasOt);
     setEditRole(task.role);
     setEditSpecialTask(task.special_task || '');
+    setEditLostAndFound(task.lost_and_found || 'เก็บตกหล่น');
   };
 
   const handleSaveEdit = async (id: string) => {
@@ -505,6 +509,7 @@ export default function Home() {
         additional_times: additionalTimes,
         time_details: timeDetailsObj,
         special_task: editSpecialTask.trim(),
+        lost_and_found: editLostAndFound.trim() || 'เก็บตกหล่น',
         staff_name: finalStaffName,
         role: editRole,
         action_detail: primaryDetail
@@ -520,6 +525,7 @@ export default function Home() {
               additional_times: additionalTimes, 
               time_details: timeDetailsObj,
               special_task: editSpecialTask.trim(),
+              lost_and_found: editLostAndFound.trim() || 'เก็บตกหล่น',
               staff_name: finalStaffName, 
               role: editRole, 
               action_detail: primaryDetail 
@@ -590,8 +596,9 @@ export default function Home() {
       }).join('\n');
 
       const specialTaskLine = task.special_task ? `-${task.special_task}\n` : '';
+      const lostAndFoundLine = `🕰 ${task.lost_and_found || 'เก็บตกหล่น'}`;
 
-      return `- ${task.role} : ${task.staff_name}\n${specialTaskLine}${timeLines}\n🕰 เก็บตกหล่น`;
+      return `- ${task.role} : ${task.staff_name}\n${specialTaskLine}${timeLines}\n${lostAndFoundLine}`;
     }).join('\n\n');
 
     reportText += formattedTaskList;
@@ -973,35 +980,47 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* ส่วนกรอกงานพิเศษ / หน้าที่พิเศษ */}
-              <div className="space-y-1.5 pt-2 border-t border-slate-800">
-                <div className="flex justify-between items-center">
+              {/* ส่วนกรอกงานพิเศษ / หน้าที่พิเศษ + ข้อความเก็บตกหล่น */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
                     <PhoneCall className="w-3.5 h-3.5" /> งานพิเศษ / หน้าที่พิเศษ (ถ้ามี):
                   </label>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
-                    placeholder="เช่น โทรหน้าเว็บ (ปล่อยว่างไว้ได้หากไม่มี)"
+                    placeholder="เช่น โทรหน้าเว็บ (ปล่อยว่างไว้ได้)"
                     value={newSpecialTask}
                     onChange={(e) => setNewSpecialTask(e.target.value)}
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-purple-300 outline-none focus:border-purple-500"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-purple-300 outline-none focus:border-purple-500"
                   />
                   
                   {/* ปุ่ม Quick Select งานพิเศษ */}
-                  <div className="flex flex-wrap gap-1 items-center">
+                  <div className="flex flex-wrap gap-1 items-center pt-0.5">
                     {SUGGESTED_SPECIAL_TASKS.map((st) => (
                       <button
                         key={st}
                         type="button"
                         onClick={() => setNewSpecialTask(st)}
-                        className="text-[11px] bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-800/60 px-2 py-1 rounded-lg transition-all"
+                        className="text-[10px] bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-800/60 px-2 py-0.5 rounded-md transition-all"
                       >
                         + {st}
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5" /> รายละเอียดการเก็บตกหล่น:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="เช่น เก็บตกหล่นไลน์หลัก"
+                    value={newLostAndFound}
+                    onChange={(e) => setNewLostAndFound(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-amber-300 outline-none focus:border-amber-500"
+                  />
+                  <span className="text-[10px] text-slate-500">*หากไม่ระบุ ระบบจะใช้ "เก็บตกหล่น" ตามปกติ</span>
                 </div>
               </div>
 
@@ -1144,16 +1163,29 @@ export default function Home() {
                         </button>
                       </div>
 
-                      {/* แก้ไขงานพิเศษ */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-purple-400">งานพิเศษ / หน้าที่พิเศษ:</label>
-                        <input
-                          type="text"
-                          placeholder="เช่น โทรหน้าเว็บ (เว้นว่างได้หากไม่มี)"
-                          value={editSpecialTask}
-                          onChange={(e) => setEditSpecialTask(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-purple-300 outline-none focus:border-purple-500"
-                        />
+                      {/* แก้ไขงานพิเศษ + เก็บตกหล่น */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-purple-400">งานพิเศษ / หน้าที่พิเศษ:</label>
+                          <input
+                            type="text"
+                            placeholder="เช่น โทรหน้าเว็บ (เว้นว่างได้)"
+                            value={editSpecialTask}
+                            onChange={(e) => setEditSpecialTask(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-purple-300 outline-none focus:border-purple-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-amber-400">รายละเอียดการเก็บตกหล่น:</label>
+                          <input
+                            type="text"
+                            placeholder="เช่น เก็บตกหล่นไลน์หลัก"
+                            value={editLostAndFound}
+                            onChange={(e) => setEditLostAndFound(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-amber-300 outline-none focus:border-amber-500"
+                          />
+                        </div>
                       </div>
 
                       {/* รายการเวลา + รายละเอียดในโหมดแก้ไข */}
@@ -1267,6 +1299,14 @@ export default function Home() {
                               </div>
                             );
                           })}
+
+                          {/* แสดงข้อความเก็บตกหล่นประจำตัว */}
+                          <div className="pt-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-950/60 text-amber-400 border border-amber-800/60 text-[11px] font-semibold">
+                              <Wrench className="w-3 h-3 text-amber-400" />
+                              {task.lost_and_found || 'เก็บตกหล่น'}
+                            </span>
+                          </div>
 
                           {task.is_completed && (
                             <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
