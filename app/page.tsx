@@ -254,9 +254,12 @@ export default function Home() {
 
   useEffect(() => {
     if (shiftTimes.length > 0) {
-      setNewTimePairs([{ time: shiftTimes[0], detail: '' }]);
+      // ค้นหาเวลาแรกที่ยังไม่ถูกใช้โดยใครเลย
+      const allUsedTimes = tasks.flatMap(t => [t.time, ...(t.additional_times || [])]);
+      const availableTime = shiftTimes.find(t => !allUsedTimes.includes(t)) || shiftTimes[0];
+      setNewTimePairs([{ time: availableTime, detail: '' }]);
     }
-  }, [selectedShift]);
+  }, [selectedShift, tasks]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -273,6 +276,20 @@ export default function Home() {
       setTasks(data || []);
     }
     setLoading(false);
+  };
+
+  // ฟังก์ชันช่วยดึงรายการเวลาทั้งหมดที่ถูกใช้งานไปแล้วในกะนี้ (สามารถละเว้น ID ปัจจุบันที่กำลังแก้ไขได้)
+  const getTakenTimes = (excludeTaskId?: string | null) => {
+    const taken = new Set<string>();
+    tasks.forEach(t => {
+      if (t.id !== excludeTaskId) {
+        if (t.time) taken.add(t.time);
+        if (t.additional_times) {
+          t.additional_times.forEach(at => taken.add(at));
+        }
+      }
+    });
+    return taken;
   };
 
   const handleRotateTasks = async () => {
@@ -417,7 +434,6 @@ export default function Home() {
     if (!error && data) {
       setTasks([...tasks, data[0]].sort((a, b) => a.time.localeCompare(b.time)));
       setNewStaffName('');
-      setNewTimePairs([{ time: shiftTimes[0] || '20:00', detail: '' }]);
       setIsOt(false);
       setShowAddForm(false);
     }
@@ -571,6 +587,9 @@ export default function Home() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const takenTimesNewForm = getTakenTimes(null);
+  const takenTimesEditForm = getTakenTimes(editingId);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans selection:bg-sky-500 selection:text-white">
@@ -953,7 +972,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => {
-                        const unusedTime = shiftTimes.find(t => !newTimePairs.some(p => p.time === t)) || shiftTimes[0];
+                        const unusedTime = shiftTimes.find(t => !takenTimesNewForm.has(t) && !newTimePairs.some(p => p.time === t)) || shiftTimes[0];
                         setNewTimePairs([...newTimePairs, { time: unusedTime, detail: '' }]);
                       }}
                       className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 bg-emerald-950/50 border border-emerald-800 px-2.5 py-1 rounded-lg"
@@ -978,7 +997,7 @@ export default function Home() {
                         required
                       >
                         {shiftTimes
-                          .filter(t => t === pair.time || !newTimePairs.some((p, i) => i !== idx && p.time === t))
+                          .filter(t => t === pair.time || (!takenTimesNewForm.has(t) && !newTimePairs.some((p, i) => i !== idx && p.time === t)))
                           .map(t => (
                             <option key={t} value={t}>{t} น.</option>
                           ))}
@@ -1092,7 +1111,7 @@ export default function Home() {
                             <button
                               type="button"
                               onClick={() => {
-                                const unusedTime = shiftTimes.find(t => !editTimePairs.some(p => p.time === t)) || shiftTimes[0];
+                                const unusedTime = shiftTimes.find(t => !takenTimesEditForm.has(t) && !editTimePairs.some(p => p.time === t)) || shiftTimes[0];
                                 setEditTimePairs([...editTimePairs, { time: unusedTime, detail: '' }]);
                               }}
                               className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 bg-emerald-950/40 border border-emerald-800 px-2 py-0.5 rounded"
@@ -1114,7 +1133,7 @@ export default function Home() {
                               className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-sky-400 outline-none cursor-pointer"
                             >
                               {shiftTimes
-                                .filter(st => st === pair.time || !editTimePairs.some((p, i) => i !== idx && p.time === st))
+                                .filter(st => st === pair.time || (!takenTimesEditForm.has(st) && !editTimePairs.some((p, i) => i !== idx && p.time === st)))
                                 .map(st => (
                                   <option key={st} value={st}>{st} น.</option>
                                 ))}
