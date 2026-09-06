@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -122,6 +122,29 @@ const DEFAULT_NIGHT_SUPPORT = [
   '@UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป'
 ];
 
+// คำนวณช่วงวันที่ย้อนหลัง 7 วัน
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
+const getMinDateString = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().split('T')[0];
+};
+
+const getRecent7Days = () => {
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push({
+      dateStr: d.toISOString().split('T')[0],
+      displayDate: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+      label: i === 0 ? 'วันนี้' : i === 1 ? 'เมื่อวาน' : `${i} วันที่แล้ว`
+    });
+  }
+  return days;
+};
+
 export default function Home() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShift, setSelectedShift] = useState<'morning' | 'night'>('morning');
@@ -152,14 +175,15 @@ export default function Home() {
   const totalTasksCount = tasks.length;
   const progressPercent = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
 
+  const todayStr = getTodayString();
+  const minDateStr = getMinDateString();
+  const recentDays = getRecent7Days();
+
   // ระบบดึงวันที่และเวลาปัจจุบันแบบ Realtime
   useEffect(() => {
     const updateRealtimeDateAndShift = () => {
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const currentDateString = `${year}-${month}-${day}`;
+      const currentDateString = now.toISOString().split('T')[0];
 
       setSelectedDate(currentDateString);
       setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
@@ -209,6 +233,16 @@ export default function Home() {
 
   useEffect(() => {
     if (selectedDate) {
+      // ตรวจสอบเงื่อนไขไม่ให้เลือกย้อนหลังเกิน 7 วัน หรืออนาคต
+      if (selectedDate < minDateStr) {
+        alert('สามารถดูข้อมูลย้อนหลังได้สูงสุด 7 วันเท่านั้นครับ');
+        setSelectedDate(minDateStr);
+        return;
+      }
+      if (selectedDate > todayStr) {
+        setSelectedDate(todayStr);
+        return;
+      }
       fetchTasks();
     }
   }, [selectedShift, selectedDate]);
@@ -539,12 +573,47 @@ export default function Home() {
             </div>
           </div>
 
+          {/* แถบเลือกวันที่ย้อนหลัง ( Quick Tabs 7 วัน ) */}
+          <div className="pt-2 border-t border-slate-800/80 relative z-10 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-sky-400" />
+                เลือกดูข้อมูลย้อนหลัง (สูงสุด 7 วัน):
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {minDateStr.split('-').reverse().join('/')} - {todayStr.split('-').reverse().join('/')}
+              </span>
+            </div>
+
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+              {recentDays.map((day) => {
+                const isActive = selectedDate === day.dateStr;
+                return (
+                  <button
+                    key={day.dateStr}
+                    onClick={() => setSelectedDate(day.dateStr)}
+                    className={`flex-1 min-w-[76px] py-1.5 px-2 rounded-xl text-center transition-all border flex flex-col items-center justify-center ${
+                      isActive
+                        ? 'bg-sky-500/20 border-sky-500/60 text-sky-300 font-bold shadow-lg shadow-sky-500/10'
+                        : 'bg-slate-950/40 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <span className="text-[10px] font-medium opacity-80">{day.label}</span>
+                    <span className="text-xs font-mono font-bold">{day.displayDate}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 relative z-10">
             <div className="flex items-center gap-2.5 bg-slate-950/60 px-3.5 py-1.5 rounded-xl border border-slate-800 focus-within:border-sky-500/50 transition-all">
               <Calendar className="w-4 h-4 text-sky-400" />
-              <span className="text-xs text-slate-400 font-medium">วันที่:</span>
+              <span className="text-xs text-slate-400 font-medium">ระบุวันที่:</span>
               <input
                 type="date"
+                min={minDateStr}
+                max={todayStr}
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="bg-transparent text-sm font-semibold text-slate-200 outline-none cursor-pointer"
