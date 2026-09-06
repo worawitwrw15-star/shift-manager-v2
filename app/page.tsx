@@ -471,11 +471,11 @@ export default function Home() {
 
     reportText += `\n📍 หลักการตามลูกค้า 🚩 แยกชาย-หญิง และหากมีโน๊ต ประเภทที่ลค.สนใจ\nING, ไลน์หลัก   =  วันนี้ + เมื่อวาน และ แท็กทีมตามMC   \n------------------------------------\n\n🚩หน้าที่หลักของ พนง. MC ที่ต้องช่วยกัน !!\n\n- 5 LINE@ หลักที่ต้องดูแลช่วยกัน [345สมัคร, ไลน์หลัก, ING, SERVICE และ ทำไมไม่วาร์ป]\n-  ตามแจ้งเคสถอนใน Talk Talk 📌\n-  รับ+ดีด รายการหน้าเว็บ\n-  เก็บตกหล่น\n\nนอกเหนือจากนี้ มีการแบ่งหน้าที่ให้ชัดเจนแล้ว ตามนี้ค่ะ\n\n`;
 
-    tasks.forEach(task => {
-      reportText += `- ${task.role} : ${task.staff_name}\n`;
-      reportText += `- 🕘 ${task.time} น. ${task.action_detail}\n`;
-      reportText += `🕰 เก็บตกหล่น\n\n`;
-    });
+    const formattedTaskList = tasks.map(task => {
+      return `- ${task.role} : ${task.staff_name}\n- 🕘 ${task.time} น. ${task.action_detail}\n🕰 เก็บตกหล่น`;
+    }).join('\n\n');
+
+    reportText += formattedTaskList;
 
     navigator.clipboard.writeText(reportText);
     setCopied(true);
