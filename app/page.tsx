@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText, PhoneCall } from 'lucide-react';
 
 interface TimeTaskPair {
   time: string;
@@ -14,6 +14,7 @@ interface Task {
   time: string;
   additional_times?: string[];
   time_details?: Record<string, string>;
+  special_task?: string; // เก็บงานพิเศษ เช่น "โทรหน้าเว็บ"
   staff_name: string;
   role: string;
   action_detail: string;
@@ -31,6 +32,9 @@ const NIGHT_TIMES = [
   '20:00', '21:00', '22:00', '23:00', '00:00', 
   '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'
 ];
+
+// รายการงานพิเศษยอดนิยม Quick Select
+const SUGGESTED_SPECIAL_TASKS = ['โทรหน้าเว็บ', 'ดูแล LINE Official', 'ดูแลเคสฝาก-ถอน'];
 
 // รายการงานเริ่มต้นของ TN.MC และ Support.TN
 const DEFAULT_MORNING_TN = [
@@ -128,7 +132,6 @@ const DEFAULT_NIGHT_SUPPORT = [
   '@UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป'
 ];
 
-// คำนวณช่วงวันที่ย้อนหลัง 7 วัน
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const getMinDateString = () => {
@@ -165,18 +168,15 @@ export default function Home() {
   const [supportTnName, setSupportTnName] = useState('พี่เอ้ [SL]');
   const [isEditingLeaders, setIsEditingLeaders] = useState(false);
 
-  // สเตทสำหรับเก็บรายการงานประจำของหัวหน้ากะ
   const [morningTnTasks, setMorningTnTasks] = useState<string[]>(DEFAULT_MORNING_TN);
   const [morningSupportTasks, setMorningSupportTasks] = useState<string[]>(DEFAULT_MORNING_SUPPORT);
   const [nightTnTasks, setNightTnTasks] = useState<string[]>(DEFAULT_NIGHT_TN);
   const [nightSupportTasks, setNightSupportTasks] = useState<string[]>(DEFAULT_NIGHT_SUPPORT);
 
-  // สเตทเปิด/ปิด Pop-up แก้ไขรายละเอียดงานหัวหน้า
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [editingTarget, setEditingTarget] = useState<'tn' | 'support'>('tn');
   const [tempTasksInput, setTempTasksInput] = useState<string>('');
 
-  // คำนวณจำนวนงานที่เสร็จและเปอร์เซ็นต์
   const completedTasksCount = tasks.filter(t => t.is_completed).length;
   const totalTasksCount = tasks.length;
   const progressPercent = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
@@ -185,7 +185,6 @@ export default function Home() {
   const minDateStr = getMinDateString();
   const recentDays = getRecent7Days();
 
-  // ระบบดึงวันที่และเวลาปัจจุบันแบบ Realtime
   useEffect(() => {
     const updateRealtimeDateAndShift = () => {
       const now = new Date();
@@ -221,12 +220,13 @@ export default function Home() {
     }
   }, [selectedShift]);
 
-  // สเตทเพิ่มงานแบบจับคู่ [เวลา, รายละเอียดงาน]
+  // สเตทเพิ่มงานแบบจับคู่ [เวลา, รายละเอียดงาน] และงานพิเศษ
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTimePairs, setNewTimePairs] = useState<TimeTaskPair[]>([{ time: '', detail: '' }]);
   const [newStaffName, setNewStaffName] = useState('');
   const [newRole, setNewRole] = useState('MC');
   const [isOt, setIsOt] = useState(false);
+  const [newSpecialTask, setNewSpecialTask] = useState('');
 
   // สเตทแก้ไขงาน
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -234,6 +234,7 @@ export default function Home() {
   const [editStaffName, setEditStaffName] = useState('');
   const [editRole, setEditRole] = useState('MC');
   const [editIsOt, setEditIsOt] = useState(false);
+  const [editSpecialTask, setEditSpecialTask] = useState('');
 
   const shiftTimes = selectedShift === 'morning' ? MORNING_TIMES : NIGHT_TIMES;
 
@@ -254,7 +255,6 @@ export default function Home() {
 
   useEffect(() => {
     if (shiftTimes.length > 0) {
-      // ค้นหาเวลาแรกที่ยังไม่ถูกใช้โดยใครเลย
       const allUsedTimes = tasks.flatMap(t => [t.time, ...(t.additional_times || [])]);
       const availableTime = shiftTimes.find(t => !allUsedTimes.includes(t)) || shiftTimes[0];
       setNewTimePairs([{ time: availableTime, detail: '' }]);
@@ -278,7 +278,6 @@ export default function Home() {
     setLoading(false);
   };
 
-  // ฟังก์ชันช่วยดึงรายการเวลาทั้งหมดที่ถูกใช้งานไปแล้วในกะนี้ (สามารถละเว้น ID ปัจจุบันที่กำลังแก้ไขได้)
   const getTakenTimes = (excludeTaskId?: string | null) => {
     const taken = new Set<string>();
     tasks.forEach(t => {
@@ -354,6 +353,7 @@ export default function Home() {
       time: t.time,
       additional_times: t.additional_times || [],
       time_details: t.time_details || {},
+      special_task: t.special_task || '',
       staff_name: t.staff_name,
       role: t.role,
       action_detail: t.action_detail,
@@ -400,7 +400,6 @@ export default function Home() {
     const mainTime = newTimePairs[0].time;
     const additionalTimes = newTimePairs.slice(1).map(p => p.time).filter(Boolean);
     
-    // สร้าง Object แมปเวลากับรายละเอียดงาน
     const timeDetailsObj: Record<string, string> = {};
     newTimePairs.forEach(p => {
       if (p.time) {
@@ -418,6 +417,7 @@ export default function Home() {
       time: mainTime,
       additional_times: additionalTimes,
       time_details: timeDetailsObj,
+      special_task: newSpecialTask.trim(),
       staff_name: finalStaffName,
       role: newRole,
       action_detail: primaryDetail,
@@ -434,6 +434,7 @@ export default function Home() {
     if (!error && data) {
       setTasks([...tasks, data[0]].sort((a, b) => a.time.localeCompare(b.time)));
       setNewStaffName('');
+      setNewSpecialTask('');
       setIsOt(false);
       setShowAddForm(false);
     }
@@ -455,7 +456,6 @@ export default function Home() {
   const startEditing = (task: Task) => {
     setEditingId(task.id);
     
-    // แปลงข้อมูล Task เป็นชุด [เวลา, รายละเอียดงาน]
     const allTimes = [task.time, ...(task.additional_times || [])];
     const pairs: TimeTaskPair[] = allTimes.map(t => ({
       time: t,
@@ -467,6 +467,7 @@ export default function Home() {
     setEditStaffName(hasOt ? task.staff_name.replace(/ OT$/, '') : task.staff_name);
     setEditIsOt(hasOt);
     setEditRole(task.role);
+    setEditSpecialTask(task.special_task || '');
   };
 
   const handleSaveEdit = async (id: string) => {
@@ -492,6 +493,7 @@ export default function Home() {
         time: mainTime,
         additional_times: additionalTimes,
         time_details: timeDetailsObj,
+        special_task: editSpecialTask.trim(),
         staff_name: finalStaffName,
         role: editRole,
         action_detail: primaryDetail
@@ -506,6 +508,7 @@ export default function Home() {
               time: mainTime, 
               additional_times: additionalTimes, 
               time_details: timeDetailsObj,
+              special_task: editSpecialTask.trim(),
               staff_name: finalStaffName, 
               role: editRole, 
               action_detail: primaryDetail 
@@ -517,7 +520,6 @@ export default function Home() {
     }
   };
 
-  // เปิด Modal แก้ไขรายละเอียดงานหัวหน้า
   const openLeaderTasksModal = (target: 'tn' | 'support') => {
     setEditingTarget(target);
     let targetTasks: string[] = [];
@@ -530,7 +532,6 @@ export default function Home() {
     setShowTaskDetailModal(true);
   };
 
-  // บันทึกรายการงานหัวหน้า
   const saveLeaderTasks = () => {
     const updatedArray = tempTasksInput
       .split('\n')
@@ -572,13 +573,14 @@ export default function Home() {
     const formattedTaskList = tasks.map(task => {
       const allTimes = [task.time, ...(task.additional_times || [])];
       
-      // จัดรูปแบบแยกเวลาตามด้วยรายละเอียดงาน
       const timeLines = allTimes.map(t => {
         const detail = task.time_details?.[t] || task.action_detail || '';
         return `- 🕘 ${t} น. ${detail}`.trim();
       }).join('\n');
 
-      return `- ${task.role} : ${task.staff_name}\n${timeLines}\n🕰 เก็บตกหล่น`;
+      const specialTaskLine = task.special_task ? `-${task.special_task}\n` : '';
+
+      return `- ${task.role} : ${task.staff_name}\n${specialTaskLine}${timeLines}\n🕰 เก็บตกหล่น`;
     }).join('\n\n');
 
     reportText += formattedTaskList;
@@ -754,7 +756,6 @@ export default function Home() {
                 <p className="text-base font-bold text-amber-400">{tnMcName}</p>
               )}
 
-              {/* แสดงตัวอย่างงาน TN.MC */}
               <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg max-h-24 overflow-y-auto space-y-1 scrollbar-thin">
                 {(selectedShift === 'morning' ? morningTnTasks : nightTnTasks).map((task, idx) => (
                   <p key={idx} className="truncate">• {task}</p>
@@ -785,7 +786,6 @@ export default function Home() {
                 <p className="text-base font-bold text-sky-400">{supportTnName}</p>
               )}
 
-              {/* แสดงตัวอย่างงาน Support.TN */}
               <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg max-h-24 overflow-y-auto space-y-1 scrollbar-thin">
                 {(selectedShift === 'morning' ? morningSupportTasks : nightSupportTasks).map((task, idx) => (
                   <p key={idx} className="truncate">• {task}</p>
@@ -882,7 +882,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Progress Bar (นับจำนวนงานที่เสร็จ) */}
           {totalTasksCount > 0 && (
             <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 space-y-2 shadow-inner">
               <div className="flex justify-between items-center text-xs font-semibold">
@@ -920,7 +919,6 @@ export default function Home() {
                 <h3 className="text-sm font-bold text-emerald-400">เพิ่มรายการงานประจำวัน ({selectedDate})</h3>
               </div>
 
-              {/* ส่วนกรอกข้อมูลหลัก: ชื่อพนักงาน + ตำแหน่ง */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs text-slate-400 font-medium">ชื่อพนักงาน</label>
@@ -964,7 +962,39 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* ส่วนเพิ่มเวลา + รายละเอียดงานแต่ละช่วงเวลา (สูงสุด 3 ช่วง) */}
+              {/* ส่วนกรอกงานพิเศษ / หน้าที่พิเศษ */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                    <PhoneCall className="w-3.5 h-3.5" /> งานพิเศษ / หน้าที่พิเศษ (ถ้ามี):
+                  </label>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="เช่น โทรหน้าเว็บ (ปล่อยว่างไว้ได้หากไม่มี)"
+                    value={newSpecialTask}
+                    onChange={(e) => setNewSpecialTask(e.target.value)}
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-purple-300 outline-none focus:border-purple-500"
+                  />
+                  
+                  {/* ปุ่ม Quick Select งานพิเศษ */}
+                  <div className="flex flex-wrap gap-1 items-center">
+                    {SUGGESTED_SPECIAL_TASKS.map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => setNewSpecialTask(st)}
+                        className="text-[11px] bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-800/60 px-2 py-1 rounded-lg transition-all"
+                      >
+                        + {st}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ส่วนเพิ่มเวลา + รายละเอียดงานแต่ละช่วงเวลา */}
               <div className="space-y-3 pt-2 border-t border-slate-800">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-sky-400">เวลาตามลูกค้า และ รายละเอียดงานประจำช่วงเวลา (สูงสุด 3 เวลา):</label>
@@ -1103,8 +1133,20 @@ export default function Home() {
                         </button>
                       </div>
 
+                      {/* แก้ไขงานพิเศษ */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-purple-400">งานพิเศษ / หน้าที่พิเศษ:</label>
+                        <input
+                          type="text"
+                          placeholder="เช่น โทรหน้าเว็บ (เว้นว่างได้หากไม่มี)"
+                          value={editSpecialTask}
+                          onChange={(e) => setEditSpecialTask(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-purple-300 outline-none focus:border-purple-500"
+                        />
+                      </div>
+
                       {/* รายการเวลา + รายละเอียดในโหมดแก้ไข */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 pt-2 border-t border-slate-800">
                         <div className="flex justify-between items-center">
                           <span className="text-[11px] font-bold text-sky-400">แก้ไขเวลาและรายละเอียดงาน:</span>
                           {editTimePairs.length < 3 && (
@@ -1192,6 +1234,14 @@ export default function Home() {
                         </button>
 
                         <div className="space-y-2 flex-1">
+                          {/* แสดงงานพิเศษถ้ามี */}
+                          {task.special_task && (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-950/80 text-purple-300 border border-purple-800/80 text-xs font-bold">
+                              <PhoneCall className="w-3 h-3" />
+                              -{task.special_task}
+                            </div>
+                          )}
+
                           {/* แสดงรายการเวลา + รายละเอียดงานแต่ละช่วง */}
                           {[task.time, ...(task.additional_times || [])].map((t, idx) => {
                             const detail = task.time_details?.[t] || (t === task.time ? task.action_detail : '');
