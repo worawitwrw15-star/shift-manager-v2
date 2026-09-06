@@ -862,7 +862,7 @@ export default function Home() {
                     <select
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-sky-400 font-bold outline-none focus:border-sky-500"
+                      className="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-sky-400 font-bold outline-none focus:border-sky-500 cursor-pointer"
                       required
                     >
                       {shiftTimes.map(t => (
@@ -998,33 +998,48 @@ export default function Home() {
                   }`}
                 >
                   {editingId === task.id ? (
-                    /* โหมดแก้ไข */
+                    /* โหมดแก้ไข (ปรับส่วนเลือกเวลาหลายช่องตรงนี้) */
                     <div className="flex-1 w-full space-y-3 bg-slate-950 p-3.5 rounded-xl border border-sky-500/30">
                       <div className="flex flex-wrap items-center gap-2">
+                        {/* เวลาหลักที่ 1 */}
                         <select
                           value={editTime}
                           onChange={(e) => setEditTime(e.target.value)}
-                          className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-sky-400 font-bold"
+                          className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-sky-400 font-bold outline-none cursor-pointer"
                         >
                           {shiftTimes.map(t => (
                             <option key={t} value={t}>{t} น.</option>
                           ))}
                         </select>
 
-                        {/* เวลาเพิ่มเติมในโหมดแก้ไข */}
+                        {/* เวลาเพิ่มเติมที่ 2 และ 3 */}
                         {editAdditionalTimes.map((t, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 bg-sky-950/80 text-sky-400 border border-sky-800/80 text-xs font-bold px-2 py-1 rounded-lg">
-                            {t} น.
+                          <div key={idx} className="flex items-center gap-1 bg-sky-950/80 border border-sky-800/80 rounded-lg pl-1.5 pr-1 py-0.5">
+                            <select
+                              value={t}
+                              onChange={(e) => {
+                                const newArr = [...editAdditionalTimes];
+                                newArr[idx] = e.target.value;
+                                setEditAdditionalTimes(newArr);
+                              }}
+                              className="bg-transparent text-xs text-sky-400 font-bold outline-none cursor-pointer"
+                            >
+                              {shiftTimes.map(st => (
+                                <option key={st} value={st} className="bg-slate-900 text-sky-400">{st} น.</option>
+                              ))}
+                            </select>
                             <button
                               type="button"
                               onClick={() => setEditAdditionalTimes(editAdditionalTimes.filter((_, i) => i !== idx))}
-                              className="hover:text-rose-400 ml-0.5"
+                              className="text-slate-400 hover:text-rose-400 p-0.5"
+                              title="ลบเวลานี้"
                             >
                               <X className="w-3 h-3" />
                             </button>
-                          </span>
+                          </div>
                         ))}
 
+                        {/* ปุ่มกดเลือกเพิ่มเวลาที่ 2 หรือ 3 */}
                         {1 + editAdditionalTimes.length < 3 && (
                           <select
                             value=""
@@ -1039,7 +1054,7 @@ export default function Home() {
                             {shiftTimes
                               .filter(t => t !== editTime && !editAdditionalTimes.includes(t))
                               .map(t => (
-                                <option key={t} value={t}>{t} น.</option>
+                                <option key={t} value={t} className="bg-slate-900 text-white">{t} น.</option>
                               ))}
                           </select>
                         )}
@@ -1086,7 +1101,7 @@ export default function Home() {
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => handleSaveEdit(task.id)}
-                          className="flex items-center gap-1 bg-sky-600 hover:bg-sky-500 text-white px-3 py-1 rounded-lg text-xs font-bold"
+                          className="flex items-center gap-1 bg-sky-600 hover:bg-sky-500 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-md"
                         >
                           <Save className="w-3 h-3"/> บันทึก
                         </button>
