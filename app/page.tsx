@@ -12,8 +12,8 @@ interface TimeTaskPair {
 interface Task {
   id: string;
   time: string;
-  additional_times?: string[]; // เก็บเวลาเพิ่มเติม
-  time_details?: Record<string, string>; // เก็บรายละเอียดงานแยกตามเวลา { "20:00": "งาน A", "23:00": "งาน B" }
+  additional_times?: string[];
+  time_details?: Record<string, string>;
   staff_name: string;
   role: string;
   action_detail: string;
@@ -977,9 +977,11 @@ export default function Home() {
                         className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs font-bold text-sky-400 outline-none cursor-pointer"
                         required
                       >
-                        {shiftTimes.map(t => (
-                          <option key={t} value={t}>{t} น.</option>
-                        ))}
+                        {shiftTimes
+                          .filter(t => t === pair.time || !newTimePairs.some((p, i) => i !== idx && p.time === t))
+                          .map(t => (
+                            <option key={t} value={t}>{t} น.</option>
+                          ))}
                       </select>
                     </div>
 
@@ -1111,9 +1113,11 @@ export default function Home() {
                               }}
                               className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-sky-400 outline-none cursor-pointer"
                             >
-                              {shiftTimes.map(st => (
-                                <option key={st} value={st}>{st} น.</option>
-                              ))}
+                              {shiftTimes
+                                .filter(st => st === pair.time || !editTimePairs.some((p, i) => i !== idx && p.time === st))
+                                .map(st => (
+                                  <option key={st} value={st}>{st} น.</option>
+                                ))}
                             </select>
 
                             <input
