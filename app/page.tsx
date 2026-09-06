@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText, PhoneCall, Wrench, Layers } from 'lucide-react';
 
@@ -131,7 +131,6 @@ const DEFAULT_NIGHT_SUPPORT = [
   '@UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป'
 ];
 
-// ฟังก์ชันดึงวันที่ปัจจุบันตามเวลาประเทศไทย (Asia/Bangkok)
 const getTodayString = () => {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Bangkok',
@@ -155,8 +154,11 @@ const getMinDateString = () => {
 };
 
 export default function Home() {
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [selectedShift, setSelectedShift] = useState<'morning' | 'night'>('morning');
+  const [isManualShift, setIsManualShift] = useState(false);
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -187,15 +189,21 @@ export default function Home() {
   const minDateStr = getMinDateString();
 
   useEffect(() => {
+    document.title = "Management System MC345";
+  }, []);
+
+  useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }));
 
-      const currentHour = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour: 'numeric', hour12: false }));
-      if (currentHour >= 7 && currentHour < 19) {
-        setSelectedShift('morning');
-      } else {
-        setSelectedShift('night');
+      if (!isManualShift) {
+        const currentHour = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour: 'numeric', hour12: false }));
+        if (currentHour >= 7 && currentHour < 19) {
+          setSelectedShift('morning');
+        } else {
+          setSelectedShift('night');
+        }
       }
     };
 
@@ -203,7 +211,12 @@ export default function Home() {
     const interval = setInterval(updateDateTime, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isManualShift]);
+
+  const handleShiftChange = (shift: 'morning' | 'night') => {
+    setIsManualShift(true);
+    setSelectedShift(shift);
+  };
 
   useEffect(() => {
     fetchLeaders();
@@ -689,8 +702,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10 font-sans selection:bg-sky-500 selection:text-white">
-      <title>ระบบจัดการหน้างาน MC345</title>
-
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header Section */}
@@ -707,14 +718,15 @@ export default function Home() {
                 Live Real-Time {currentTime && <span className="font-mono opacity-80">({currentTime} น.)</span>}
               </div>
               <h1 className="text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight">
-                ระบบจัดการหน้างาน MC345
+                Management System MC345
               </h1>
             </div>
 
             {/* Shift Selector */}
             <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800/80 shadow-inner w-full md:w-auto">
               <button
-                onClick={() => setSelectedShift('morning')}
+                type="button"
+                onClick={() => handleShiftChange('morning')}
                 className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${
                   selectedShift === 'morning' 
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/25 scale-[1.02]' 
@@ -724,7 +736,8 @@ export default function Home() {
                 <Sun className="w-4 h-4" /> กะเช้า
               </button>
               <button
-                onClick={() => setSelectedShift('night')}
+                type="button"
+                onClick={() => handleShiftChange('night')}
                 className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${
                   selectedShift === 'night' 
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]' 
@@ -737,20 +750,30 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800/80 relative z-10">
-            <div className="flex items-center gap-2.5 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 focus-within:border-sky-500/50 transition-all">
-              <Calendar className="w-4 h-4 text-sky-400" />
-              <span className="text-xs text-slate-400 font-medium">วันที่แสดงผล:</span>
+            {/* กล่องเลือกวันที่คลิกตรงไหนก็ได้ */}
+            <div 
+              onClick={() => dateInputRef.current?.showPicker ? dateInputRef.current.showPicker() : dateInputRef.current?.focus()}
+              className="flex items-center gap-2.5 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 hover:border-sky-500/50 cursor-pointer transition-all select-none"
+            >
+              <Calendar className="w-4 h-4 text-sky-400 pointer-events-none" />
+              <span className="text-xs text-slate-400 font-medium pointer-events-none">วันที่แสดงผล:</span>
               <input
+                ref={dateInputRef}
                 type="date"
                 min={minDateStr}
                 max={todayStr}
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
                 className="bg-transparent text-sm font-semibold text-slate-200 outline-none cursor-pointer"
               />
               {selectedDate !== todayStr && (
                 <button
-                  onClick={() => setSelectedDate(todayStr)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedDate(todayStr);
+                  }}
                   className="ml-2 text-[10px] bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 px-2.5 py-1 rounded-lg border border-sky-500/30 transition-all font-semibold"
                 >
                   กลับสู่วันนี้
@@ -914,7 +937,7 @@ export default function Home() {
 
         {/* Task List Section */}
         <section className="bg-slate-900/75 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-5">
             <div>
               <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
                 <Clock className="w-5 h-5 text-sky-400" /> 
@@ -923,11 +946,12 @@ export default function Home() {
               <p className="text-xs text-slate-400 mt-0.5">จัดการเวลา รายละเอียด และสถานะงานของทีมงานในกะนี้</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            {/* UI ส่วนปุ่มสลับเวร, ดึงงานเมื่อวาน, เพิ่มรายการงานใหม่ เรียงต่อกันอย่างสวยงาม */}
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
               <button
                 onClick={handleRotateTasks}
                 disabled={rotating || tasks.length === 0}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 disabled:opacity-50 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 disabled:opacity-50 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
                 title="สลับเวรและเวลาของพนักงานอัตโนมัติ"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${rotating ? 'animate-spin' : ''}`} />
@@ -937,7 +961,7 @@ export default function Home() {
               <button
                 onClick={handleCloneYesterdayTasks}
                 disabled={cloning}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 disabled:opacity-50 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 disabled:opacity-50 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
                 title="คัดลอกตารางงานของเมื่อวานมาใช้วันนี้"
               >
                 <CopyPlus className="w-3.5 h-3.5" />
@@ -946,7 +970,7 @@ export default function Home() {
 
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/25"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/25 whitespace-nowrap"
               >
                 {showAddForm ? <X className="w-4 h-4"/> : <Plus className="w-4 h-4"/>}
                 {showAddForm ? 'ปิดแบบฟอร์ม' : 'เพิ่มรายการงานใหม่'}
@@ -985,7 +1009,7 @@ export default function Home() {
 
           {/* ฟอร์มเพิ่มงาน */}
           {showAddForm && (
-            <form onSubmit={handleAddTask} className="bg-slate-950 p-5 sm:p-6 rounded-3xl border border-emerald-500/40 space-y-5 shadow-2xl">
+            <form onSubmit={handleAddTask} className="bg-slate-950 p-5 sm:p-6 rounded-3xl border border-emerald-500/40 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
