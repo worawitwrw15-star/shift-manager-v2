@@ -7,6 +7,7 @@ import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save
 interface Task {
   id: string;
   time: string;
+  additional_times?: string[];
   staff_name: string;
   role: string;
   action_detail: string;
@@ -192,6 +193,7 @@ export default function Home() {
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTime, setNewTime] = useState('');
+  const [newAdditionalTimes, setNewAdditionalTimes] = useState<string[]>([]);
   const [newStaffName, setNewStaffName] = useState('');
   const [newRole, setNewRole] = useState('MC');
   const [isOt, setIsOt] = useState(false);
@@ -199,6 +201,7 @@ export default function Home() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
+  const [editAdditionalTimes, setEditAdditionalTimes] = useState<string[]>([]);
   const [editStaffName, setEditStaffName] = useState('');
   const [editActionDetail, setEditActionDetail] = useState('');
   const [editRole, setEditRole] = useState('MC');
@@ -210,16 +213,16 @@ export default function Home() {
     }
   }, [selectedShift, selectedDate]);
 
-  const currentAvailableTimes = (selectedShift === 'morning' ? MORNING_TIMES : NIGHT_TIMES)
-    .filter(t => !tasks.some(task => task.time === t));
+  const shiftTimes = selectedShift === 'morning' ? MORNING_TIMES : NIGHT_TIMES;
 
   useEffect(() => {
-    if (currentAvailableTimes.length > 0) {
-      setNewTime(currentAvailableTimes[0]);
+    if (shiftTimes.length > 0) {
+      setNewTime(shiftTimes[0]);
     } else {
       setNewTime('');
     }
-  }, [selectedShift, tasks]);
+    setNewAdditionalTimes([]);
+  }, [selectedShift]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -298,6 +301,7 @@ export default function Home() {
 
     const newTasksToInsert = yesterdayTasks.map(t => ({
       time: t.time,
+      additional_times: t.additional_times || [],
       staff_name: t.staff_name,
       role: t.role,
       action_detail: t.action_detail,
@@ -336,7 +340,7 @@ export default function Home() {
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTime) {
-      alert('เวลาทั้งหมดในกะนี้ถูกใช้งานเต็มแล้วครับ');
+      alert('กรุณาเลือกเวลาทำการด้วยครับ');
       return;
     }
     if (!newStaffName || !newActionDetail) return;
@@ -347,6 +351,7 @@ export default function Home() {
 
     const newTask = {
       time: newTime,
+      additional_times: newAdditionalTimes,
       staff_name: finalStaffName,
       role: newRole,
       action_detail: newActionDetail,
@@ -364,6 +369,7 @@ export default function Home() {
       setTasks([...tasks, data[0]].sort((a, b) => a.time.localeCompare(b.time)));
       setNewStaffName('');
       setNewActionDetail('');
+      setNewAdditionalTimes([]);
       setIsOt(false);
       setShowAddForm(false);
     }
@@ -385,6 +391,7 @@ export default function Home() {
   const startEditing = (task: Task) => {
     setEditingId(task.id);
     setEditTime(task.time);
+    setEditAdditionalTimes(task.additional_times || []);
     const hasOt = task.staff_name.endsWith(' OT');
     setEditStaffName(hasOt ? task.staff_name.replace(/ OT$/, '') : task.staff_name);
     setEditIsOt(hasOt);
@@ -401,6 +408,7 @@ export default function Home() {
       .from('daily_tasks')
       .update({
         time: editTime,
+        additional_times: editAdditionalTimes,
         staff_name: finalStaffName,
         role: editRole,
         action_detail: editActionDetail
@@ -410,7 +418,7 @@ export default function Home() {
     if (!error) {
       const updatedList = tasks.map(t => 
         t.id === id 
-          ? { ...t, time: editTime, staff_name: finalStaffName, role: editRole, action_detail: editActionDetail } 
+          ? { ...t, time: editTime, additional_times: editAdditionalTimes, staff_name: finalStaffName, role: editRole, action_detail: editActionDetail } 
           : t
       );
       setTasks(updatedList.sort((a, b) => a.time.localeCompare(b.time)));
@@ -472,7 +480,8 @@ export default function Home() {
     reportText += `\n📍 หลักการตามลูกค้า 🚩 แยกชาย-หญิง และหากมีโน๊ต ประเภทที่ลค.สนใจ\nING, ไลน์หลัก   =  วันนี้ + เมื่อวาน และ แท็กทีมตามMC   \n------------------------------------\n\n🚩หน้าที่หลักของ พนง. MC ที่ต้องช่วยกัน !!\n\n- 5 LINE@ หลักที่ต้องดูแลช่วยกัน [345สมัคร, ไลน์หลัก, ING, SERVICE และ ทำไมไม่วาร์ป]\n-  ตามแจ้งเคสถอนใน Talk Talk 📌\n-  รับ+ดีด รายการหน้าเว็บ\n-  เก็บตกหล่น\n\nนอกเหนือจากนี้ มีการแบ่งหน้าที่ให้ชัดเจนแล้ว ตามนี้ค่ะ\n\n`;
 
     const formattedTaskList = tasks.map(task => {
-      return `- ${task.role} : ${task.staff_name}\n- 🕘 ${task.time} น. ${task.action_detail}\n🕰 เก็บตกหล่น`;
+      const allTimes = [task.time, ...(task.additional_times || [])].map(t => `${t} น.`).join(', ');
+      return `- ${task.role} : ${task.staff_name}\n- 🕘 ${allTimes} ${task.action_detail}\n🕰 เก็บตกหล่น`;
     }).join('\n\n');
 
     reportText += formattedTaskList;
@@ -777,22 +786,55 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-400 font-medium">เวลาทำการ</label>
-                  <select
-                    value={newTime}
-                    onChange={(e) => setNewTime(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-sky-400 font-bold outline-none focus:border-sky-500"
-                    required
-                  >
-                    {currentAvailableTimes.length === 0 ? (
-                      <option value="">เวลาเต็มแล้ว</option>
-                    ) : (
-                      currentAvailableTimes.map(t => (
+                {/* เลือกเวลาหลัก + เวลาเพิ่มเติม */}
+                <div className="space-y-1.5 lg:col-span-2">
+                  <label className="text-xs text-slate-400 font-medium">เวลาตามลูกค้า (สูงสุด 3 เวลา)</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={newTime}
+                      onChange={(e) => setNewTime(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-sky-400 font-bold outline-none focus:border-sky-500"
+                      required
+                    >
+                      {shiftTimes.map(t => (
                         <option key={t} value={t}>{t} น.</option>
-                      ))
+                      ))}
+                    </select>
+
+                    {/* แสดงป้ายเวลาเพิ่มเติม */}
+                    {newAdditionalTimes.map((t, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1 bg-sky-950/80 text-sky-400 border border-sky-800/80 text-xs font-bold px-2.5 py-1.5 rounded-xl">
+                        {t} น.
+                        <button
+                          type="button"
+                          onClick={() => setNewAdditionalTimes(newAdditionalTimes.filter((_, i) => i !== idx))}
+                          className="hover:text-rose-400 ml-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+
+                    {/* ปุ่มเพิ่มเวลาเพิ่มเติม (อนุญาตได้สูงสุด 2 เวลาเพิ่มเติม = รวม 3 เวลา) */}
+                    {1 + newAdditionalTimes.length < 3 && (
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value && !newAdditionalTimes.includes(e.target.value) && e.target.value !== newTime) {
+                            setNewAdditionalTimes([...newAdditionalTimes, e.target.value]);
+                          }
+                        }}
+                        className="bg-slate-900/60 border border-dashed border-slate-700 rounded-xl p-2 text-xs text-slate-400 hover:text-white outline-none cursor-pointer"
+                      >
+                        <option value="">+ เพิ่มเวลา</option>
+                        {shiftTimes
+                          .filter(t => t !== newTime && !newAdditionalTimes.includes(t))
+                          .map(t => (
+                            <option key={t} value={t}>{t} น.</option>
+                          ))}
+                      </select>
                     )}
-                  </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -837,7 +879,7 @@ export default function Home() {
                   </select>
                 </div>
 
-                <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                <div className="space-y-1 sm:col-span-2 lg:col-span-4">
                   <label className="text-xs text-slate-400 font-medium">รายละเอียดงาน</label>
                   <input
                     type="text"
@@ -852,8 +894,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={currentAvailableTimes.length === 0}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-bold transition-all shadow-md"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-bold transition-all shadow-md"
               >
                 บันทึกรายการงาน
               </button>
@@ -890,18 +931,49 @@ export default function Home() {
                   {editingId === task.id ? (
                     /* โหมดแก้ไข */
                     <div className="flex-1 w-full space-y-3 bg-slate-950 p-3.5 rounded-xl border border-sky-500/30">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <select
                           value={editTime}
                           onChange={(e) => setEditTime(e.target.value)}
                           className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-sky-400 font-bold"
                         >
-                          {(selectedShift === 'morning' ? MORNING_TIMES : NIGHT_TIMES)
-                            .filter(t => t === task.time || !tasks.some(other => other.id !== task.id && other.time === t))
-                            .map(t => (
-                              <option key={t} value={t}>{t} น.</option>
-                            ))}
+                          {shiftTimes.map(t => (
+                            <option key={t} value={t}>{t} น.</option>
+                          ))}
                         </select>
+
+                        {/* เวลาเพิ่มเติมในโหมดแก้ไข */}
+                        {editAdditionalTimes.map((t, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 bg-sky-950/80 text-sky-400 border border-sky-800/80 text-xs font-bold px-2 py-1 rounded-lg">
+                            {t} น.
+                            <button
+                              type="button"
+                              onClick={() => setEditAdditionalTimes(editAdditionalTimes.filter((_, i) => i !== idx))}
+                              className="hover:text-rose-400 ml-0.5"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+
+                        {1 + editAdditionalTimes.length < 3 && (
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value && !editAdditionalTimes.includes(e.target.value) && e.target.value !== editTime) {
+                                setEditAdditionalTimes([...editAdditionalTimes, e.target.value]);
+                              }
+                            }}
+                            className="bg-slate-900/60 border border-dashed border-slate-700 rounded-lg p-1 text-xs text-slate-400 hover:text-white outline-none cursor-pointer"
+                          >
+                            <option value="">+ เพิ่มเวลา</option>
+                            {shiftTimes
+                              .filter(t => t !== editTime && !editAdditionalTimes.includes(t))
+                              .map(t => (
+                                <option key={t} value={t}>{t} น.</option>
+                              ))}
+                          </select>
+                        )}
 
                         <select
                           value={editRole}
@@ -970,12 +1042,16 @@ export default function Home() {
                         </button>
 
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-block px-2.5 py-0.5 text-xs font-bold rounded-lg bg-sky-950/80 text-sky-400 border border-sky-800/80">
-                              {task.time} น.
-                            </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {/* แสดงเวลาหลัก และเวลาเพิ่มเติมทั้งหมด */}
+                            {[task.time, ...(task.additional_times || [])].map((t, idx) => (
+                              <span key={idx} className="inline-block px-2.5 py-0.5 text-xs font-bold rounded-lg bg-sky-950/80 text-sky-400 border border-sky-800/80">
+                                {t} น.
+                              </span>
+                            ))}
+
                             {task.is_completed && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ml-1">
                                 เสร็จสิ้น
                               </span>
                             )}
