@@ -119,7 +119,7 @@ const DEFAULT_NIGHT_SUPPORT = [
   'QA ตารางแนะนำเพื่อน',
   'เช็คกิจกรรมและโปรโมชั่นต่างๆ ที่มี พร้อมนำเสนอลูกค้า',
   'ตรวจสอบกลุ่ม Telegram Graphic คอยดึงรูปโปรโมทต่างๆที่น่าสนใจออกมาเพื่อการตามลูกค้า',
-  'อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ ให้ทันสมัย และน่าสนใจ',
+  'อัปเดตรูป ลิงก์ และแพทเทิร์น ข้อความทักทายเพื่อนใหม่ให้ทันสมัย และน่าสนใจ',
   'ดูและ Popup - Member ให้เป็นไปตามแพลนงานของบริษัท และได้รับการอนุมัติจาก TN.',
   'สนับสนุนงาน TN.MC ในทุกภารกิจที่ได้รับมอบหมาย ให้เป็นไปตามนโยบายของบริษัทและ South Group',
   'ดูแลรายการสมัครหน้าเว็บและดีด',
@@ -131,12 +131,27 @@ const DEFAULT_NIGHT_SUPPORT = [
   '@UFA345V1  / @MC345 SERVICE / @ing345 ING345 / @วาร์ป'
 ];
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+// ฟังก์ชันดึงวันที่ปัจจุบันตามเวลาประเทศไทย (Asia/Bangkok)
+const getTodayString = () => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(new Date());
+};
 
 const getMinDateString = () => {
   const d = new Date();
   d.setDate(d.getDate() - 7);
-  return d.toISOString().split('T')[0];
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(d);
 };
 
 export default function Home() {
@@ -172,20 +187,20 @@ export default function Home() {
   const minDateStr = getMinDateString();
 
   useEffect(() => {
-    const now = new Date();
-    setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+    const updateDateTime = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }));
 
-    const currentHour = now.getHours();
-    if (currentHour >= 7 && currentHour < 19) {
-      setSelectedShift('morning');
-    } else {
-      setSelectedShift('night');
-    }
+      const currentHour = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour: 'numeric', hour12: false }));
+      if (currentHour >= 7 && currentHour < 19) {
+        setSelectedShift('morning');
+      } else {
+        setSelectedShift('night');
+      }
+    };
 
-    const interval = setInterval(() => {
-      const d = new Date();
-      setCurrentTime(d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
-    }, 10000);
+    updateDateTime();
+    const interval = setInterval(updateDateTime, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -415,9 +430,10 @@ export default function Home() {
   };
 
   const handleCloneYesterdayTasks = async () => {
-    const currentDateObj = new Date(selectedDate);
+    const currentDateObj = new Date(selectedDate + 'T00:00:00+07:00');
     currentDateObj.setDate(currentDateObj.getDate() - 1);
-    const yesterdayDate = currentDateObj.toISOString().split('T')[0];
+    const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const yesterdayDate = formatter.format(currentDateObj);
 
     if (!confirm(`คุณต้องการดึงตารางงาน (${selectedShift === 'morning' ? 'กะเช้า' : 'กะดึก'}) จากวันที่ ${yesterdayDate} มาใส่ในวันที่ ${selectedDate} ใช่หรือไม่?`)) {
       return;
