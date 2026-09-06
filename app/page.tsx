@@ -291,6 +291,7 @@ export default function Home() {
     return taken;
   };
 
+  // สลับเวรเฉพาะเวลาและหน้าที่ตามลูกค้า แต่รักษางานพิเศษให้อยู่กับตัวพนักงานเดิม
   const handleRotateTasks = async () => {
     if (tasks.length < 2) {
       alert('ต้องมีรายการงานอย่างน้อย 2 รายการขึ้นไปจึงจะหมุนเวียนเวรได้ครับ');
@@ -303,20 +304,30 @@ export default function Home() {
 
     setRotating(true);
 
-    const staffList = tasks.map(t => ({ staff_name: t.staff_name, role: t.role }));
-    
-    const rotatedStaffList = [
-      staffList[staffList.length - 1],
-      ...staffList.slice(0, staffList.length - 1)
+    // ดึงเฉพาะชุดงานตามลูกค้า (เวลา + รายละเอียดงาน)
+    const taskDetailsList = tasks.map(t => ({
+      time: t.time,
+      additional_times: t.additional_times,
+      time_details: t.time_details,
+      action_detail: t.action_detail
+    }));
+
+    // หมุนวนเฉพาะชุดเวลางานตามลูกค้า
+    const rotatedTaskDetailsList = [
+      taskDetailsList[taskDetailsList.length - 1],
+      ...taskDetailsList.slice(0, taskDetailsList.length - 1)
     ];
 
+    // อัปเดตตารางโดยคง staff_name, role และ special_task ไว้ที่เดิม
     const updatePromises = tasks.map((task, index) => {
-      const newStaff = rotatedStaffList[index];
+      const newDetails = rotatedTaskDetailsList[index];
       return supabase
         .from('daily_tasks')
         .update({
-          staff_name: newStaff.staff_name,
-          role: newStaff.role
+          time: newDetails.time,
+          additional_times: newDetails.additional_times,
+          time_details: newDetails.time_details,
+          action_detail: newDetails.action_detail
         })
         .eq('id', task.id);
     });
