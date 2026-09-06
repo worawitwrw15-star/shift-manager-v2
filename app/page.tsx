@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -233,7 +233,6 @@ export default function Home() {
 
   useEffect(() => {
     if (selectedDate) {
-      // ตรวจสอบเงื่อนไขไม่ให้เลือกย้อนหลังเกิน 7 วัน หรืออนาคต
       if (selectedDate < minDateStr) {
         alert('สามารถดูข้อมูลย้อนหลังได้สูงสุด 7 วันเท่านั้นครับ');
         setSelectedDate(minDateStr);
@@ -514,8 +513,9 @@ export default function Home() {
     reportText += `\n📍 หลักการตามลูกค้า 🚩 แยกชาย-หญิง และหากมีโน๊ต ประเภทที่ลค.สนใจ\nING, ไลน์หลัก   =  วันนี้ + เมื่อวาน และ แท็กทีมตามMC   \n------------------------------------\n\n🚩หน้าที่หลักของ พนง. MC ที่ต้องช่วยกัน !!\n\n- 5 LINE@ หลักที่ต้องดูแลช่วยกัน [345สมัคร, ไลน์หลัก, ING, SERVICE และ ทำไมไม่วาร์ป]\n-  ตามแจ้งเคสถอนใน Talk Talk 📌\n-  รับ+ดีด รายการหน้าเว็บ\n-  เก็บตกหล่น\n\nนอกเหนือจากนี้ มีการแบ่งหน้าที่ให้ชัดเจนแล้ว ตามนี้ค่ะ\n\n`;
 
     const formattedTaskList = tasks.map(task => {
-      const allTimes = [task.time, ...(task.additional_times || [])].map(t => `${t} น.`).join(', ');
-      return `- ${task.role} : ${task.staff_name}\n- 🕘 ${allTimes} ${task.action_detail}\n🕰 เก็บตกหล่น`;
+      const allTimes = [task.time, ...(task.additional_times || [])];
+      const timesFormatted = allTimes.map(t => `- 🕘 ${t} น.`).join('\n');
+      return `- ${task.role} : ${task.staff_name}\n${timesFormatted} ${task.action_detail}\n🕰 เก็บตกหล่น`;
     }).join('\n\n');
 
     reportText += formattedTaskList;
@@ -884,7 +884,7 @@ export default function Home() {
                       </span>
                     ))}
 
-                    {/* ปุ่มเพิ่มเวลาเพิ่มเติม (อนุญาตได้สูงสุด 2 เวลาเพิ่มเติม = รวม 3 เวลา) */}
+                    {/* ปุ่มเพิ่มเวลาเพิ่มเติม */}
                     {1 + newAdditionalTimes.length < 3 && (
                       <select
                         value=""
