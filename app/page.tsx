@@ -303,7 +303,6 @@ export default function Home() {
       }
     }
 
-    // บันทึกลง Supabase ทันที
     const { error } = await supabase
       .from('shift_leaders')
       .upsert({
@@ -1070,6 +1069,7 @@ export default function Home() {
                     <option value="SL">SL</option>
                     <option value="TN.MC">TN.MC</option>
                     <option value="Support.TN">Support.TN</option>
+                    <option value="GE">GE</option>
                   </select>
                 </div>
               </div>
@@ -1245,6 +1245,7 @@ export default function Home() {
                           <option value="SL">SL</option>
                           <option value="TN.MC">TN.MC</option>
                           <option value="Support.TN">Support.TN</option>
+                          <option value="GE">GE</option>
                         </select>
 
                         <input
