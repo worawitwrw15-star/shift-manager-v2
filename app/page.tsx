@@ -176,6 +176,7 @@ export default function Home() {
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [editingTarget, setEditingTarget] = useState<'tn' | 'support'>('tn');
   const [tempTasksInput, setTempTasksInput] = useState<string>('');
+  const [savingLeaderTasks, setSavingLeaderTasks] = useState(false);
 
   const completedTasksCount = tasks.filter(t => t.is_completed).length;
   const totalTasksCount = tasks.length;
@@ -223,16 +224,21 @@ export default function Home() {
         .single();
 
       if (data && !error) {
-        setTnMcName(data.tn_mc_name);
-        setSupportTnName(data.support_tn_name);
+        setTnMcName(data.tn_mc_name || '');
+        setSupportTnName(data.support_tn_name || '');
+
+        if (selectedShift === 'morning') {
+          if (data.tn_tasks) setMorningTnTasks(data.tn_tasks);
+          if (data.support_tasks) setMorningSupportTasks(data.support_tasks);
+        } else {
+          if (data.tn_tasks) setNightTnTasks(data.tn_tasks);
+          if (data.support_tasks) setNightSupportTasks(data.support_tasks);
+        }
       } else {
-        const savedTn = localStorage.getItem(`tn_mc_${selectedShift}`);
-        const savedSupport = localStorage.getItem(`support_tn_${selectedShift}`);
         const defaultTn = selectedShift === 'morning' ? 'เอก [Z3]' : 'ท็อป [Z3]';
         const defaultSupport = selectedShift === 'morning' ? 'พี่เอ้ [SL]' : 'กีกี้ [SL]';
-
-        setTnMcName(savedTn || defaultTn);
-        setSupportTnName(savedSupport || defaultSupport);
+        setTnMcName(defaultTn);
+        setSupportTnName(defaultSupport);
       }
     } catch {
       const defaultTn = selectedShift === 'morning' ? 'เอก [Z3]' : 'ท็อป [Z3]';
@@ -244,8 +250,9 @@ export default function Home() {
 
   const handleSaveLeaders = async () => {
     setSavingLeaders(true);
-    localStorage.setItem(`tn_mc_${selectedShift}`, tnMcName);
-    localStorage.setItem(`support_tn_${selectedShift}`, supportTnName);
+
+    const currentTnTasks = selectedShift === 'morning' ? morningTnTasks : nightTnTasks;
+    const currentSupportTasks = selectedShift === 'morning' ? morningSupportTasks : nightSupportTasks;
 
     const { error } = await supabase
       .from('shift_leaders')
@@ -253,6 +260,8 @@ export default function Home() {
         shift: selectedShift,
         tn_mc_name: tnMcName,
         support_tn_name: supportTnName,
+        tn_tasks: currentTnTasks,
+        support_tasks: currentSupportTasks,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'shift' });
 
@@ -262,6 +271,56 @@ export default function Home() {
 
     setSavingLeaders(false);
     setIsEditingLeaders(false);
+  };
+
+  const saveLeaderTasks = async () => {
+    setSavingLeaderTasks(true);
+    const updatedArray = tempTasksInput
+      .split('\n')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+
+    let newMorningTn = morningTnTasks;
+    let newMorningSupport = morningSupportTasks;
+    let newNightTn = nightTnTasks;
+    let newNightSupport = nightSupportTasks;
+
+    if (selectedShift === 'morning') {
+      if (editingTarget === 'tn') {
+        newMorningTn = updatedArray;
+        setMorningTnTasks(updatedArray);
+      } else {
+        newMorningSupport = updatedArray;
+        setMorningSupportTasks(updatedArray);
+      }
+    } else {
+      if (editingTarget === 'tn') {
+        newNightTn = updatedArray;
+        setNightTnTasks(updatedArray);
+      } else {
+        newNightSupport = updatedArray;
+        setNightSupportTasks(updatedArray);
+      }
+    }
+
+    // บันทึกลง Supabase ทันที
+    const { error } = await supabase
+      .from('shift_leaders')
+      .upsert({
+        shift: selectedShift,
+        tn_mc_name: tnMcName,
+        support_tn_name: supportTnName,
+        tn_tasks: selectedShift === 'morning' ? newMorningTn : newNightTn,
+        support_tasks: selectedShift === 'morning' ? newMorningSupport : newNightSupport,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'shift' });
+
+    if (error) {
+      console.error('Error saving leader tasks to supabase:', error.message);
+    }
+
+    setSavingLeaderTasks(false);
+    setShowTaskDetailModal(false);
   };
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -589,23 +648,6 @@ export default function Home() {
     setShowTaskDetailModal(true);
   };
 
-  const saveLeaderTasks = () => {
-    const updatedArray = tempTasksInput
-      .split('\n')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-
-    if (selectedShift === 'morning') {
-      if (editingTarget === 'tn') setMorningTnTasks(updatedArray);
-      else setMorningSupportTasks(updatedArray);
-    } else {
-      if (editingTarget === 'tn') setNightTnTasks(updatedArray);
-      else setNightSupportTasks(updatedArray);
-    }
-
-    setShowTaskDetailModal(false);
-  };
-
   const handleCopyReport = () => {
     const formattedDate = selectedDate.split('-').reverse().join(' / ');
     const shiftTitle = selectedShift === 'morning' ? 'MC  กะเช้า' : 'MC ดึก';
@@ -891,9 +933,10 @@ export default function Home() {
                 </button>
                 <button
                   onClick={saveLeaderTasks}
-                  className="px-5 py-2.5 rounded-xl text-xs text-slate-950 font-bold bg-amber-500 hover:bg-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all"
+                  disabled={savingLeaderTasks}
+                  className="px-5 py-2.5 rounded-xl text-xs text-slate-950 font-bold bg-amber-500 hover:bg-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4" /> บันทึกการเปลี่ยนแปลง
+                  <Save className="w-4 h-4" /> {savingLeaderTasks ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
                 </button>
               </div>
             </div>
