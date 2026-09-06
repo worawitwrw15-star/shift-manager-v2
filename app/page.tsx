@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, ListEdit, FileText } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Sun, Moon, User, Plus, Trash2, Edit3, Save, X, Calendar, Copy, Check, ShieldCheck, CopyPlus, RefreshCw, Sparkles, CheckCheck, Edit, FileText } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -595,7 +595,7 @@ export default function Home() {
                   onClick={() => openLeaderTasksModal('tn')}
                   className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 transition-all"
                 >
-                  <ListEdit className="w-3 h-3" /> แก้ไขงานประจำ
+                  <Edit className="w-3 h-3" /> แก้ไขงานประจำ
                 </button>
               </div>
 
@@ -626,7 +626,7 @@ export default function Home() {
                   onClick={() => openLeaderTasksModal('support')}
                   className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20 transition-all"
                 >
-                  <ListEdit className="w-3 h-3" /> แก้ไขงานประจำ
+                  <Edit className="w-3 h-3" /> แก้ไขงานประจำ
                 </button>
               </div>
 
