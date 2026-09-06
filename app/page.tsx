@@ -613,6 +613,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans selection:bg-sky-500 selection:text-white">
+      {/* กำหนดชื่อบน Browser Tab */}
+      <title>ระบบจัดการหน้างาน MC345</title>
+
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header Section */}
@@ -630,7 +633,7 @@ export default function Home() {
                 {currentTime && <span className="text-xs text-slate-400 font-mono">({currentTime} น.)</span>}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight">
-                ระบบจัดการหน้าที่ประจำวัน
+                ระบบจัดการหน้างาน MC345
               </h1>
             </div>
 
